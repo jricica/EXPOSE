@@ -11,6 +11,7 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["src/**/*"],
+
+  "include": ["src/**/*", "src/sentry.test.ts"],
   "exclude": ["node_modules"]
 }
