@@ -3,18 +3,19 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-  "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-  "start": "node dist/index.js",
-  "build": "tsc"
-},
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
   "dependencies": {
-  "express": "^5.2.1"
-},
-"devDependencies": {
-  "@types/express": "^5.0.6",
-  "@types/node": "^20.11.0",
-  "nodemon": "^3.1.11",
-  "ts-node": "^10.9.2",
-  "typescript": "^5.9.3"
-}
+    "@sentry/node": "^10.36.0",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.19.30",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }
