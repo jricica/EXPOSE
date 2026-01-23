@@ -1,5 +1,5 @@
 /**
- * Modelo base,y validacion basica,
+ * Modelo base,y validacion basica, para uso de db en el futuro
  */
 
 export type UserId = number;
