@@ -1,12 +1,7 @@
-import './App.css'
+import Login from "./modules/auth/Login";
 
 function App() {
-
-  return (
-    <>
-      <p>Hello world</p>
-    </>
-  )
+  return <Login />;
 }
 
-export default App
+export default App;
