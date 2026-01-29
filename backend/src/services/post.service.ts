@@ -67,6 +67,9 @@ export interface PostServiceOptions {
 }
 
 export class PostService {
+    static createPost(arg0: { userId: string; content: any; ttl: any; }) {
+        throw new Error("Method not implemented.");
+    }
 	private readonly clock: Clock;
 	private readonly defaultTtl: DurationInput;
 
