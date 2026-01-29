@@ -185,7 +185,8 @@ export class PostService {
 			? duration
 			: this.defaultTtl;
 	}
-};
+
+}; 
 
 export const postService = new PostService(postRepository);
 
