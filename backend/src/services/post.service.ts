@@ -1,6 +1,7 @@
 import "../instrument";
 import * as Sentry from '@sentry/node';
 import { postRepository } from '../repositories/post.repository';
+import { likeRepository } from '../repositories/post.repository';
 
 
 import {
@@ -148,6 +149,33 @@ export class PostService {
 			throw err;
 		}
 	}
+
+	async toggleLike(postId: string, userId: string): Promise<PostRecord | null> {
+	try {
+		const post = await this.repository.findById(postId);
+		if (!post) return null;
+
+		const existing = await likeRepository.find(postId, userId);
+
+		if (!existing) {
+			await likeRepository.create(postId, userId);
+
+			return await this.repository.update(postId, {
+				likes: post.likes + 1,
+			});
+		}
+
+		await likeRepository.delete(existing.id);
+
+		return await this.repository.update(postId, {
+			likes: Math.max(post.likes - 1, 0),
+		});
+	} catch (err) {
+		Sentry.captureException(err);
+		throw err;
+	}
+}
+
 
 	protected withExpirationFilter(
 		query: PostQuery = {}

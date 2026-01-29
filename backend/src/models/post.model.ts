@@ -6,3 +6,10 @@ export interface Post {
   expiresAt: Date;
   likes: number; 
 }
+
+export interface LikeRecord {
+	id: string;      
+	postId: string; 
+	userId: string; 
+	createdAt: Date;
+}
