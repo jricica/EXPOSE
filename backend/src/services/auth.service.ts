@@ -8,6 +8,11 @@ export interface RegisterInput {
   password: string;
 }
 
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
 export interface PublicUser {
   id: number;
   username: string;
@@ -42,6 +47,10 @@ function toPublicUser(user: User): PublicUser {
   return { id, username, email, createdAt };
 }
 
+function generateToken(user: User): string {
+  return Buffer.from(`${user.id}:${Date.now()}`).toString("base64");
+}
+
 export async function registerUser(input: RegisterInput): Promise<PublicUser> {
   const username = validateUsername(input.username);
   const email = validateEmail(input.email);
@@ -63,4 +72,22 @@ export async function registerUser(input: RegisterInput): Promise<PublicUser> {
 
   users.push(user);
   return toPublicUser(user);
+}
+
+export async function loginUser(
+  input: LoginInput
+): Promise<{ token: string; user: PublicUser }> {
+  const email = validateEmail(input.email);
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+
+  const ok = verifyPassword(input.password, user.passwordHash);
+  if (!ok) {
+    throw new Error("Invalid credentials");
+  }
+
+  const token = generateToken(user);
+  return { token, user: toPublicUser(user) };
 }
