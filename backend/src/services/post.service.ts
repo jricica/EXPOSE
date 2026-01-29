@@ -1,5 +1,7 @@
 import "../instrument";
 import * as Sentry from '@sentry/node';
+import { postRepository } from '../repositories/post.repository';
+
 
 import {
 	addDuration,
@@ -183,4 +185,7 @@ export class PostService {
 			? duration
 			: this.defaultTtl;
 	}
-}
+};
+
+export const postService = new PostService(postRepository);
+
