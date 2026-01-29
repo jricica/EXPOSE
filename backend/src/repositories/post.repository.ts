@@ -35,17 +35,42 @@ export const likeRepository = {
 		if (index !== -1) likes.splice(index, 1);
 	},
 
-    async incrementLikes(id: string, delta: number): Promise<PostRecord | null> {
-	    const index = posts.findIndex(p => p.id === id);
-	    if (index === -1) return null;
+    async toggleLikeAtomic(postId: string, userId: string): Promise<PostRecord | null> {
+	const postIndex = posts.findIndex(p => p.id === postId);
+	if (postIndex === -1) return null;
 
-	    posts[index] = {
-		    ...posts[index],
-		    likes: Math.max(posts[index].likes + delta, 0),
-	    };
+	const likeIndex = likes.findIndex(
+		l => l.postId === postId && l.userId === userId
+	);
 
-	    return posts[index];
-    },
+	// Like
+	if (likeIndex === -1) {
+		likes.push({
+			id: randomUUID(),
+			postId,
+			userId,
+			createdAt: new Date(),
+		});
+
+		posts[postIndex] = {
+			...posts[postIndex],
+			likes: posts[postIndex].likes + 1,
+		};
+
+		return posts[postIndex];
+	}
+
+	// Quitar Like o dislike 
+	likes.splice(likeIndex, 1);
+
+	posts[postIndex] = {
+		...posts[postIndex],
+		likes: Math.max(posts[postIndex].likes - 1, 0),
+	};
+
+	return posts[postIndex];
+}, 
+
 };
 
 

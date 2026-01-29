@@ -61,7 +61,7 @@ export interface PostRepository {
 	findMany(query?: PostRepositoryFindManyInput): Promise<PostRecord[]>;
 	findById(id: string): Promise<PostRecord | null>;
 	update(id: string, data: PostRepositoryUpdateData): Promise<PostRecord | null>;
-	incrementLikes(id: string, delta: number): Promise<PostRecord | null>;
+	toggleLikeAtomic(postId: string, userId: string): Promise<PostRecord | null>;
 
 }
 
@@ -153,26 +153,13 @@ export class PostService {
 
 	async toggleLike(postId: string, userId: string): Promise<PostRecord | null> {
 	try {
-		const post = await this.repository.findById(postId);
-		if (!post) return null;
-
-		const existing = await likeRepository.find(postId, userId);
-
-		// LIKE
-		if (!existing) {
-			await likeRepository.create(postId, userId);
-			return await this.repository.incrementLikes(postId, 1);
-		}
-
-		// UNLIKE
-		await likeRepository.delete(existing.id);
-		return await this.repository.incrementLikes(postId, -1);
-
+		return await this.repository.toggleLikeAtomic(postId, userId);
 	} catch (err) {
 		Sentry.captureException(err);
 		throw err;
 	}
 }
+
 
 
 
