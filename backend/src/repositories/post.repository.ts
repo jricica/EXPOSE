@@ -6,8 +6,12 @@ type LikeRecord = {
 };
 
 const likes: LikeRecord[] = [];
+const posts: PostRecord[] = [];
 
 import { randomUUID } from "crypto";
+import { PostRecord } from "../services/post.service";
+
+
 
 export const likeRepository = {
 	async find(postId: string, userId: string): Promise<LikeRecord | null> {
@@ -30,4 +34,18 @@ export const likeRepository = {
 		const index = likes.findIndex(l => l.id === id);
 		if (index !== -1) likes.splice(index, 1);
 	},
+
+    async incrementLikes(id: string, delta: number): Promise<PostRecord | null> {
+	    const index = posts.findIndex(p => p.id === id);
+	    if (index === -1) return null;
+
+	    posts[index] = {
+		    ...posts[index],
+		    likes: Math.max(posts[index].likes + delta, 0),
+	    };
+
+	    return posts[index];
+    },
 };
+
+

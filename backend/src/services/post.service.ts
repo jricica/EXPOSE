@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/node';
 import { postRepository } from '../repositories/post.repository';
 import { likeRepository } from '../repositories/post.repository';
 
-
 import {
 	addDuration,
 	DurationInput,
@@ -62,6 +61,8 @@ export interface PostRepository {
 	findMany(query?: PostRepositoryFindManyInput): Promise<PostRecord[]>;
 	findById(id: string): Promise<PostRecord | null>;
 	update(id: string, data: PostRepositoryUpdateData): Promise<PostRecord | null>;
+	incrementLikes(id: string, delta: number): Promise<PostRecord | null>;
+
 }
 
 export interface PostServiceOptions {
@@ -157,24 +158,22 @@ export class PostService {
 
 		const existing = await likeRepository.find(postId, userId);
 
+		// LIKE
 		if (!existing) {
 			await likeRepository.create(postId, userId);
-
-			return await this.repository.update(postId, {
-				likes: post.likes + 1,
-			});
+			return await this.repository.incrementLikes(postId, 1);
 		}
 
+		// UNLIKE
 		await likeRepository.delete(existing.id);
+		return await this.repository.incrementLikes(postId, -1);
 
-		return await this.repository.update(postId, {
-			likes: Math.max(post.likes - 1, 0),
-		});
 	} catch (err) {
 		Sentry.captureException(err);
 		throw err;
 	}
 }
+
 
 
 	protected withExpirationFilter(
@@ -216,4 +215,5 @@ export class PostService {
 };
 
 export const postService = new PostService(postRepository);
+
 
