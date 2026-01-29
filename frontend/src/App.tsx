@@ -1,12 +1,11 @@
-import './App.css'
+import Layout from "./components/Layout";
 
 function App() {
-
   return (
-    <>
-      <p>Hello world</p>
-    </>
-  )
+    <Layout>
+      <p>Feed principal aparecerá aquí</p>
+    </Layout>
+  );
 }
 
-export default App
+export default App;
