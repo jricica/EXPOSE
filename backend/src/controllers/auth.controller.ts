@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 import { registerUser } from "../services/auth.service";
 
 export async function register(req: Request, res: Response) {
@@ -13,11 +14,19 @@ export async function register(req: Request, res: Response) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error";
-    const status = message === "Email already registered" ? 409 : 400;
+    const isInvalidRequest = message === "invalid";
+    const status = isInvalidRequest ? 400 : 500;
+
+    // Reportar a Sentry solo errores inesperados (no los de validación)
+    if (!isInvalidRequest) {
+      Sentry.captureException(err, {
+        tags: { category: "auth", operation: "register", error_type: message },
+      });
+    }
 
     res.status(status).json({
       success: false,
-      message,
+      message: isInvalidRequest ? "invalid" : "Server error",
       data: null,
     });
   }
