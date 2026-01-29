@@ -1,12 +1,7 @@
-import './App.css'
+import Register from "./modules/auth/Register";
 
 function App() {
-
-  return (
-    <>
-      <p>Hello world</p>
-    </>
-  )
+  return <Register />;
 }
 
-export default App
+export default App;
