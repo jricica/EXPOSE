@@ -1,7 +1,7 @@
-import Layout from "./components/Layout";
+import Profile from "./modules/profile/Profile";
 
 function App() {
-  return <Layout />;
+  return <Profile />;
 }
 
 export default App;
