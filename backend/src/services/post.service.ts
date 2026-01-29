@@ -1,7 +1,7 @@
 import "../instrument";
 import * as Sentry from '@sentry/node';
 import { postRepository } from '../repositories/post.repository';
-
+import { likeRepository } from '../repositories/post.repository';
 
 import {
 	addDuration,
@@ -61,6 +61,8 @@ export interface PostRepository {
 	findMany(query?: PostRepositoryFindManyInput): Promise<PostRecord[]>;
 	findById(id: string): Promise<PostRecord | null>;
 	update(id: string, data: PostRepositoryUpdateData): Promise<PostRecord | null>;
+	toggleLikeAtomic(postId: string, userId: string): Promise<PostRecord | null>;
+
 }
 
 export interface PostServiceOptions {
@@ -149,6 +151,18 @@ export class PostService {
 		}
 	}
 
+	async toggleLike(postId: string, userId: string): Promise<PostRecord | null> {
+	try {
+		return await this.repository.toggleLikeAtomic(postId, userId);
+	} catch (err) {
+		Sentry.captureException(err);
+		throw err;
+	}
+}
+
+
+
+
 	protected withExpirationFilter(
 		query: PostQuery = {}
 	): PostRepositoryFindManyInput {
@@ -189,4 +203,5 @@ export class PostService {
 }; 
 
 export const postService = new PostService(postRepository);
+
 
