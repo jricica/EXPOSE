@@ -1,7 +1,8 @@
-import Login from "./modules/auth/Login";
+
+import Register from "./modules/auth/Register";
 
 function App() {
-  return <Login />;
+  return <Register />;
 }
 
 export default App;
