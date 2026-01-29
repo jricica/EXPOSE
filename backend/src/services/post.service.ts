@@ -185,17 +185,8 @@ export class PostService {
 			? duration
 			: this.defaultTtl;
 	}
-	async getFeed(): Promise<PostRecord[]> { 
-		const posts = await this.listPosts({
-    	includeExpired: false 
-	});
 
-	return posts.sort(
-		(a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-	);
-}
-
-};
+}; 
 
 export const postService = new PostService(postRepository);
 
