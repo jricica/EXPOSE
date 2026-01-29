@@ -1,8 +1,7 @@
-
-import Register from "./modules/auth/Register";
+import Layout from "./components/Layout";
 
 function App() {
-  return <Register />;
+  return <Layout />;
 }
 
 export default App;
