@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-  "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-  "start": "node dist/index.js",
-  "build": "tsc"
-},
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
   "dependencies": {
+    "@sentry/node": "^10.37.0",
     "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "jws": "^4.0.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
