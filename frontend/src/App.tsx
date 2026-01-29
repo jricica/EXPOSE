@@ -1,3 +1,4 @@
+
 import Register from "./modules/auth/Register";
 
 function App() {
