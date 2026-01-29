@@ -1,0 +1,15 @@
+export interface Post {
+  id: string;
+  text: string;
+  author: string; // Id del user o persona que lo creó
+  createdAt: Date;
+  expiresAt: Date;
+  likes: number; 
+}
+
+export interface LikeRecord {
+	id: string;      
+	postId: string; 
+	userId: string; 
+	createdAt: Date;
+}

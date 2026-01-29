@@ -1,12 +1,7 @@
-import './App.css'
+import Profile from "./modules/profile/Profile";
 
 function App() {
-
-  return (
-    <>
-      <p>Hello world</p>
-    </>
-  )
+  return <Profile />;
 }
 
-export default App
+export default App;

@@ -1,0 +1,78 @@
+.layout-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #0f0f0f;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+  
+  .layout-header {
+    height: 60px;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .layout-logo {
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+  }
+  
+  .layout-logout {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  
+  .layout-logout:hover {
+    color: white;
+  }
+  
+  .layout-nav {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 2rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .layout-nav span {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .layout-nav span:hover {
+    color: white;
+  }
+  
+  .layout-content {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }  
+
+  .layout-inner {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    border: 1px dashed red;
+  }
+  
+
+  .layout-inner h2 {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .layout-inner p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+  }  
+  
