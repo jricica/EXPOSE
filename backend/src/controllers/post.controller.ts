@@ -11,7 +11,7 @@ export const createPost = async (req: Request, res: Response) => { // Crea un nu
 
     const userId = "mock-user-id"; 
 
-    const post = postService.createPost({
+    const post = await postService.createPost({
       userId,
       content,
       ttl,
