@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { postService } from "../services/post.service"; 
+import * as Sentry from "@sentry/node";
 
 export const createPost = async (req: Request, res: Response) => { // Crea un nuevo post
   try {
@@ -23,11 +24,34 @@ export const createPost = async (req: Request, res: Response) => { // Crea un nu
   }
 };
 
-export const getFeed = async (req: Request, res: Response) => { // Obtiene los posts para el feed principal
-  try {
-    const feed = await postService.getFeed();
-    res.json(feed);
-  } catch (err) {
-    res.status(500).json({ message: "Error obteniendo feed" });
-  }
+export const listPosts = async (req: Request, res: Response) => {
+	try {
+		const {
+			userId,
+			limit,
+			cursor,
+			includeExpired,
+			order = "desc",
+		} = req.query;
+
+		const posts = await postService.listPosts({
+			filters: {
+				userId: userId as string | undefined,
+			},
+			includeExpired: includeExpired === "true",
+			limit: limit ? Number(limit) : 20,
+			cursor: cursor as string | undefined,
+		});
+
+		res.json({
+			data: posts,
+			meta: {
+				limit: limit ? Number(limit) : 20,
+				order,
+			},
+		});
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(500).json({ message: "Error listando posts" });
+	}
 };

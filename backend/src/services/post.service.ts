@@ -185,7 +185,7 @@ export class PostService {
 			? duration
 			: this.defaultTtl;
 	}
-	async getFeed(): Promise<PostRecord[]> { // Obtiene los posts para el feed principal, no expirados y ordenados por la fecha de creación
+	async getFeed(): Promise<PostRecord[]> { 
 		const posts = await this.listPosts({
     	includeExpired: false 
 	});
