@@ -17,6 +17,14 @@ export interface UserJwtPayload extends JwtPayload {
   role?: string;
 }
 
+/**
+ * Interface extendida para compatibilidad interna
+ */
+interface ExtendedRequest extends Request {
+  context?: UserContext;
+  user?: any;
+}
+
 const handleAuthError = (res: Response, error: any) => {
   if (error instanceof UnauthorizedError) {
     return res.status(401).json({ error: 'unauthorized', message: error.message });
@@ -33,7 +41,6 @@ const handleAuthError = (res: Response, error: any) => {
   Sentry.captureException(error);
   return res.status(500).json({ message: 'Internal server error' });
 };
-
 
 export const authMiddleware = async (
   req: Request,
@@ -76,12 +83,13 @@ export const authMiddleware = async (
       role: decoded.role,
     };
 
-    req.context = context;
-    req.user = decoded;
+    // Casting a ExtendedRequest para evitar errores de compilación
+    const extendedReq = req as ExtendedRequest;
+    extendedReq.context = context;
+    extendedReq.user = decoded;
 
     return next();
   } catch (err) {
-
     if (!(err instanceof UnauthorizedError || err instanceof TokenExpiredError || err instanceof JsonWebTokenError)) {
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       Sentry.captureException(err, {
@@ -92,4 +100,3 @@ export const authMiddleware = async (
     return handleAuthError(res, err);
   }
 };
-

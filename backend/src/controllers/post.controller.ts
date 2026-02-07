@@ -1,57 +1,55 @@
 import { Request, Response } from "express";
-import { postService } from "../services/post.service"; 
+import { postService } from "../services/post.service";
+import { getUserId } from "../utils/auth";
 import * as Sentry from "@sentry/node";
 
-export const createPost = async (req: Request, res: Response) => { // Crea un nuevo post
-  try {
-    const { content, ttl } = req.body;  
+export const createPost = async (req: Request, res: Response) => {
+	try {
+		const { content, ttl } = req.body;
+		const userId = getUserId(req);
 
-    if (!content) { // Validación simple
-      return res.status(400).json({ message: "El contenido es obligatorio para realizar un post." }); 
-    }
+		if (!content) {
+			return res.status(400).json({ message: "El contenido es obligatorio." });
+		}
 
-    const userId = "mock-user-id"; 
+		const post = await postService.createPost({
+			userId,
+			content,
+			ttl,
+		});
 
-    const post = await postService.createPost({
-      userId,
-      content,
-      ttl,
-    });
-
-    res.status(201).json(post);
-  } catch (err) {
-    res.status(500).json({ message: "Error al crear un nuevo post." });
-  }
+		res.status(201).json(post);
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(500).json({ message: "Error al crear el post." });
+	}
 };
 
 export const listPosts = async (req: Request, res: Response) => {
 	try {
-		const {
-			userId,
-			limit,
-			cursor,
-			includeExpired,
-			order = "desc",
-		} = req.query;
+		const { userId, includeExpired } = req.query;
 
 		const posts = await postService.listPosts({
-			filters: {
-				userId: userId as string | undefined,
-			},
+			userId: userId ? Number(userId) : undefined,
 			includeExpired: includeExpired === "true",
-			limit: limit ? Number(limit) : 20,
-			cursor: cursor as string | undefined,
 		});
 
-		res.json({
-			data: posts,
-			meta: {
-				limit: limit ? Number(limit) : 20,
-				order,
-			},
-		});
+		res.json(posts);
 	} catch (err) {
 		Sentry.captureException(err);
-		res.status(500).json({ message: "Error listando posts" });
+		res.status(500).json({ message: "Error al listar posts." });
+	}
+};
+
+export const toggleLike = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		const userId = getUserId(req);
+
+		const likes = await postService.toggleLike(postId, userId);
+		res.json({ likes });
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(500).json({ message: "Error al procesar like." });
 	}
 };

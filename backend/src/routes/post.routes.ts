@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { createPost } from "../controllers/post.controller";
-import { listPosts } from "../controllers/post.controller";
+import { createPost, listPosts, toggleLike } from "../controllers/post.controller";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post("/posts", createPost);
-
+router.post("/posts", authMiddleware, createPost);
 router.get("/posts", listPosts);
-
+router.post("/posts/:id/like", authMiddleware, toggleLike);
 
 export default router;
