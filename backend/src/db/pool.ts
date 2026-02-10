@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import * as Sentry from '@sentry/node';
 import { databaseConfig } from '../config/database';
 
 // Centralizamos el acceso a la base de datos a través de este pool
@@ -15,13 +16,12 @@ export const query = async <T = any>(sql: string, params?: any[]): Promise<T> =>
         const [results] = await pool.execute(sql, params);
         return results as T;
     } catch (error) {
-        console.error('Database Query Error:', {
-            sql,
-            params,
-            error: error instanceof Error ? error.message : error,
+        Sentry.captureException(error, {
+            extra: { sql, params },
         });
         throw error;
     }
 };
+
 
 export default pool;
