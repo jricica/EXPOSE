@@ -1,15 +1,19 @@
+import { UserId } from "./user.model";
+
+export type PostId = number;
+
 export interface Post {
-  id: string;
-  text: string;
-  author: string; // Id del user o persona que lo creó
+  id: PostId;
+  userId: UserId;
+  content: string;
   createdAt: Date;
   expiresAt: Date;
-  likes: number; 
+  likes: number;
 }
 
 export interface LikeRecord {
-	id: string;      
-	postId: string; 
-	userId: string; 
-	createdAt: Date;
+  id: number;
+  postId: PostId;
+  userId: UserId;
+  createdAt: Date;
 }
