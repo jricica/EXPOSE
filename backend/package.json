@@ -5,13 +5,18 @@
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "build": "tsc",
+    "db:test": "ts-node src/test-connection.ts",
+    "db:init": "ts-node src/init-db.ts"
   },
   "dependencies": {
     "@sentry/node": "^10.37.0",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "mysql-promise": "^5.0.0",
+    "mysql2": "^3.16.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
