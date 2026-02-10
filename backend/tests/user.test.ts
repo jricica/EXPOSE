@@ -10,9 +10,9 @@ describe('AuthService', () => {
 
     it('should register a new User', async () => {
         const newUserInput: RegisterInput = {
-            email: "joseguzman@gmail.com",
+            email: "testname@gmail.com",
             password: "encrypted_password",
-            username: "JoseGuzman",
+            username: "testname",
         };
 
         const mockUser = {
