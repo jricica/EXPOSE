@@ -17,8 +17,3 @@ if (require.main === module) {
     testCrash();
   }, 1000);
 }
-
-// Minimal test to satisfy Jest runner (this file is an instrumentation helper)
-test('sentry instrumentation noop', () => {
-  expect(true).toBe(true);
-});
