@@ -51,18 +51,23 @@ export class PostRepository {
 	}
 
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
-		// Usamos una transacción o lógica atómica simple para este demo
 		const existing = await query<LikeRecord[]>(
-			'SELECT * FROM likes WHERE postId = ? AND userId = ?',
+			'SELECT * FROM post_likes WHERE postId = ? AND userId = ?',
 			[postId, userId]
 		);
 
 		if (existing.length > 0) {
-			await query('DELETE FROM likes WHERE id = ?', [existing[0].id]);
+			await query('DELETE FROM post_likes WHERE postId = ? AND userId = ?', [postId, userId]);
 			await query('UPDATE posts SET likes = likes - 1 WHERE id = ?', [postId]);
 		} else {
-			await query('INSERT INTO likes (postId, userId, createdAt) VALUES (?, ?, NOW())', [postId, userId]);
-			await query('UPDATE posts SET likes = likes + 1 WHERE id = ?', [postId]);
+			try {
+				await query('INSERT INTO post_likes (postId, userId, createdAt) VALUES (?, ?, NOW())', [postId, userId]);
+				await query('UPDATE posts SET likes = likes + 1 WHERE id = ?', [postId]);
+			} catch (error: any) {
+				if (error.code !== 'ER_DUP_ENTRY') {
+					throw error;
+				}
+			}
 		}
 
 		const updated = await this.findById(postId);
