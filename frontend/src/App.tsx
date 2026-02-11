@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Profile from "./modules/profile/Profile";
 import Login from "./modules/auth/Login";
+import Feed from "./modules/feed/Feed";
 import { AuthProvider } from "./modules/auth/AuthContext";
 import PrivateRoute from "./shared/auth/PrivateRoute";
 
@@ -14,12 +15,16 @@ const RouterSwitch: React.FC = () => {
   }, []);
 
   if (path === "/login") return <Login />;
+  if (path === "/profile") {
+    return (
+      <PrivateRoute>
+        <Profile />
+      </PrivateRoute>
+    );
+  }
 
-  return (
-    <PrivateRoute>
-      <Profile />
-    </PrivateRoute>
-  );
+  // Default route: feed (pública)
+  return <Feed />;
 };
 
 function App() {
