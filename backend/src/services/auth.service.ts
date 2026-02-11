@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { User, CreateUserInput } from "../models/user.model";
 import { UserRepository } from "../repositories/user.repository";
 import { JWT_SECRET } from "../config/env";
-import { validateEmail, validateUsername } from "./user.service";
+import { validateEmail, validateUsername, validatePassword } from "./user.service";
 
 export interface RegisterInput {
   username: string;
@@ -29,6 +29,7 @@ export class AuthService {
   async register(input: RegisterInput): Promise<Omit<User, 'passwordHash'>> {
     const username = validateUsername(input.username);
     const email = validateEmail(input.email);
+    validatePassword(input.password);
 
     const existing = await UserRepository.findByEmail(email);
     if (existing) {

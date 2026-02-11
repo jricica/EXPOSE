@@ -9,6 +9,9 @@ export const register = async (req: Request, res: Response) => {
   } catch (err) {
     Sentry.captureException(err);
     const message = err instanceof Error ? err.message : "Error en el registro";
+    if (message === "User entered an invalid password.") {
+      return res.status(400).json({ Code: 1000, Message: message });
+    }
     res.status(400).json({ message });
   }
 };
