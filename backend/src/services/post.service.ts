@@ -22,6 +22,7 @@ export interface PostCreateInput {
 export interface PostListQuery {
 	userId?: UserId;
 	includeExpired?: boolean;
+	currentUserId?: UserId;
 }
 
 export class PostService {
@@ -50,6 +51,7 @@ export class PostService {
 		return await this.repository.findMany({
 			userId: query.userId,
 			expiresAfter: query.includeExpired ? undefined : this.clock(),
+			currentUserId: query.currentUserId,
 		});
 	}
 
