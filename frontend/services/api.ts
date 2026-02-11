@@ -1,9 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 let authToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export const setToken = (token: string | null) => {
   authToken = token;
+};
+
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
 };
 
 type RequestOptions = {
@@ -61,6 +66,10 @@ const request = async <T>(
   const payload = isJson ? await response.json().catch(() => null) : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+
     const message = isJson && payload && typeof payload === 'object' && 'message' in (payload as any)
       ? String((payload as any).message)
       : response.statusText || 'Request failed';
