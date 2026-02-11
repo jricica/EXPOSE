@@ -100,3 +100,50 @@ export const authMiddleware = async (
     return handleAuthError(res, err);
   }
 };
+export const optionalAuthMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || typeof authHeader !== 'string') {
+    return next();
+  }
+
+  const [scheme, token] = authHeader.trim().split(/\s+/);
+
+  if (scheme?.toLowerCase() !== 'bearer' || !token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ['HS256'],
+      clockTolerance: 5,
+    }) as UserJwtPayload;
+
+    if (decoded.sub) {
+      const userId = parseInt(decoded.sub, 10);
+      const user = await UserRepository.findById(userId);
+
+      if (user) {
+        const context: UserContext = {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          role: decoded.role,
+        };
+
+        const extendedReq = req as ExtendedRequest;
+        extendedReq.context = context;
+        extendedReq.user = decoded;
+      }
+    }
+  } catch (err) {
+    // En el modo opcional, simplemente ignoramos los errores de token
+    // (token expirado, inválido, etc) y dejamos que el usuario proceda como invitado
+  }
+
+  return next();
+};

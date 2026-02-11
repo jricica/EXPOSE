@@ -5,10 +5,11 @@ import { UserId } from '../models/user.model';
 export interface PostRepositoryFindManyFilters {
 	userId?: UserId;
 	expiresAfter?: Date;
+	currentUserId?: UserId;
 }
 
 export class PostRepository {
-	async create(data: Omit<Post, 'id' | 'likes'>): Promise<PostId> {
+	async create(data: Omit<Post, 'id' | 'likes' | 'likedByMe'>): Promise<PostId> {
 		const result = await query<any>(
 			'INSERT INTO posts (userId, content, createdAt, expiresAt) VALUES (?, ?, ?, ?)',
 			[data.userId, data.content, data.createdAt, data.expiresAt]
@@ -16,31 +17,59 @@ export class PostRepository {
 		return result.insertId;
 	}
 
-	async findById(id: PostId): Promise<Post | null> {
-		const results = await query<Post[]>(
-			'SELECT * FROM posts WHERE id = ?',
-			[id]
-		);
-		return results.length > 0 ? results[0] : null;
+	async findById(id: PostId, currentUserId?: UserId): Promise<Post | null> {
+		const sql = currentUserId
+			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
+               FROM posts p 
+               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
+               WHERE p.id = ?`
+			: 'SELECT * FROM posts WHERE id = ?';
+
+		const params = currentUserId ? [currentUserId, id] : [id];
+		const results = await query<any[]>(sql, params);
+
+		if (results.length === 0) return null;
+
+		const post = results[0];
+		if (currentUserId) {
+			post.likedByMe = Boolean(post.likedByMe);
+		}
+		return post as Post;
 	}
 
 	async findMany(filters: PostRepositoryFindManyFilters = {}): Promise<Post[]> {
-		let sql = 'SELECT * FROM posts WHERE 1=1';
+		const { currentUserId } = filters;
+
+		let sql = currentUserId
+			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
+               FROM posts p 
+               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
+               WHERE 1=1`
+			: 'SELECT * FROM posts WHERE 1=1';
+
 		const params: any[] = [];
+		if (currentUserId) {
+			params.push(currentUserId);
+		}
 
 		if (filters.userId) {
-			sql += ' AND userId = ?';
+			sql += ' AND p.userId = ?';
 			params.push(filters.userId);
 		}
 
 		if (filters.expiresAfter) {
-			sql += ' AND expiresAt > ?';
+			sql += ' AND p.expiresAt > ?';
 			params.push(filters.expiresAfter);
 		}
 
-		sql += ' ORDER BY createdAt DESC';
+		sql += ' ORDER BY p.createdAt DESC';
 
-		return await query<Post[]>(sql, params);
+		const results = await query<any[]>(sql, params);
+
+		return results.map(post => ({
+			...post,
+			likedByMe: currentUserId ? Boolean(post.likedByMe) : false
+		})) as Post[];
 	}
 
 	async updateExpiresAt(id: PostId, expiresAt: Date): Promise<void> {

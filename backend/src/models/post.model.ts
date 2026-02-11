@@ -9,6 +9,7 @@ export interface Post {
   createdAt: Date;
   expiresAt: Date;
   likes: number;
+  likedByMe?: boolean;
 }
 
 export interface LikeRecord {

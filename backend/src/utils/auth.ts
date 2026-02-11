@@ -18,6 +18,20 @@ export const getContext = (req: Request): UserContext => {
 };
 
 /**
+ * Intenta obtener el contexto de usuario.
+ */
+export const tryGetContext = (req: Request): UserContext | undefined => {
+    return (req as AuthenticatedRequest).context;
+};
+
+/**
+ * Helper rápido para obtener el userId si existe.
+ */
+export const tryGetUserId = (req: Request): number | undefined => {
+    return tryGetContext(req)?.userId;
+};
+
+/**
  * Helper rápido para obtener el userId del contexto.
  */
 export const getUserId = (req: Request): number => {

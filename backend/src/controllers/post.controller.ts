@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { postService } from "../services/post.service";
-import { getUserId } from "../utils/auth";
+import { getUserId, tryGetUserId } from "../utils/auth";
 import * as Sentry from "@sentry/node";
 
 export const createPost = async (req: Request, res: Response) => {
@@ -28,10 +28,12 @@ export const createPost = async (req: Request, res: Response) => {
 export const listPosts = async (req: Request, res: Response) => {
 	try {
 		const { userId, includeExpired } = req.query;
+		const currentUserId = tryGetUserId(req);
 
 		const posts = await postService.listPosts({
 			userId: userId ? Number(userId) : undefined,
 			includeExpired: includeExpired === "true",
+			currentUserId,
 		});
 
 		res.json(posts);
