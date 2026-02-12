@@ -55,3 +55,26 @@ export const toggleLike = async (req: Request, res: Response) => {
 		res.status(500).json({ message: "Error al procesar like." });
 	}
 };
+
+export const getPost = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const currentUserId = tryGetUserId(req);
+    const post = await postService.getPostById(id, currentUserId);
+    res.json(post);
+  } catch (err) {
+    Sentry.captureException(err);
+    res.status(404).json({ message: "Post not found" });
+  }
+};
+
+export const deletePost = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    await postService.deletePost(id);
+    res.status(204).send();
+  } catch (err) {
+    Sentry.captureException(err);
+    res.status(404).json({ message: "Post not found" });
+  }
+};
