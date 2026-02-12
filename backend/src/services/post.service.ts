@@ -62,6 +62,20 @@ export class PostService {
 		return await this.repository.toggleLike(postId, userId);
 	}
 
+	async getPostById(id: PostId, currentUserId?: UserId): Promise<Post> {
+  		const post = await this.repository.findById(id, currentUserId);
+  		if (!post) throw new Error("Post not found");
+
+  		return post;
+	}
+
+	async deletePost(id: PostId): Promise<void> {
+  		const post = await this.repository.findById(id);
+  		if (!post) throw new Error("Post not found");
+		await this.repository.delete(id);
+	}
+
+
 	private resolveExpiration(baseDate: Date, ttl?: DurationInput): Date {
 		const duration = ttl && durationIsPositive(ttl)
 			? ttl

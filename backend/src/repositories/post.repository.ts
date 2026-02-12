@@ -79,6 +79,11 @@ export class PostRepository {
 		);
 	}
 
+	async delete(id: PostId): Promise<void> {
+  		await query('DELETE FROM posts WHERE id = ?', [id]);
+	}
+
+
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
 		const existing = await query<LikeRecord[]>(
 			'SELECT * FROM post_likes WHERE postId = ? AND userId = ?',
