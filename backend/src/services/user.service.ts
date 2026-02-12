@@ -64,6 +64,19 @@ export class UserService {
       friends: input.friends || []
     };
   }
+
+  async getUserById(id: any): Promise<any> {
+    return await this.repo.findById(id);
+  }
+
+  async updateUser(id: any, data: any): Promise<any> {
+    await this.repo.update(id, data);
+    return await this.repo.findById(id);
+  }
+
+  async deleteUser(id: any): Promise<void> {
+    await this.repo.delete(id);
+  }
 }
 
 export function buildUser(input: CreateUserInput): Omit<User, "id"> {
