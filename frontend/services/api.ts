@@ -1,9 +1,20 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
+const rawBase = import.meta.env.VITE_API_URL?.trim();
+const API_BASE_URL = (() => {
+  if (rawBase && /^https?:\/\//i.test(rawBase)) return rawBase;
+  const basePath = rawBase && rawBase !== '' ? rawBase : '/api';
+  const normalized = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return `${window.location.origin}${normalized}`;
+})();
 
 let authToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export const setToken = (token: string | null) => {
   authToken = token;
+};
+
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
 };
 
 type RequestOptions = {
@@ -24,7 +35,9 @@ class HttpError extends Error {
 }
 
 const buildUrl = (path: string, params?: Record<string, unknown>) => {
-  const url = new URL(path, API_BASE_URL);
+  const base = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  const url = new URL(normalizedPath, base);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null) return;
@@ -61,6 +74,10 @@ const request = async <T>(
   const payload = isJson ? await response.json().catch(() => null) : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+
     const message = isJson && payload && typeof payload === 'object' && 'message' in (payload as any)
       ? String((payload as any).message)
       : response.statusText || 'Request failed';

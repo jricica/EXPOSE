@@ -1,16 +1,28 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { setToken as setApiToken } from '../../../services/api';
+import { setToken as setApiToken, setUnauthorizedHandler } from '../../../services/api';
 
 type AuthContextValue = {
   token: string | null;
   isAuthenticated: boolean;
   login: (token: string) => void;
-  logout: () => void;
+  logout: (redirect?: boolean) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const TOKEN_STORAGE_KEY = 'auth_token';
+
+const redirectToLogin = () => {
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (window.location.pathname === '/login') {
+    window.location.replace('/login');
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set('from', current);
+  window.location.replace(`/login?${params.toString()}`);
+};
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -23,6 +35,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     setTokenState(storedToken);
     setApiToken(storedToken);
+
+    setUnauthorizedHandler(() => {
+      logout(false);
+      redirectToLogin();
+    });
+
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const login = (newToken: string) => {
@@ -31,10 +50,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setApiToken(newToken);
   };
 
-  const logout = () => {
+  const logout = (redirect = true) => {
     setTokenState(null);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setApiToken(null);
+    if (redirect) {
+      redirectToLogin();
+    }
   };
 
   const value: AuthContextValue = {
@@ -56,3 +78,4 @@ export const useAuth = () => {
 };
 
 export default AuthContext;
+export { redirectToLogin };
