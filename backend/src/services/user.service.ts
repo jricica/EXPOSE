@@ -65,18 +65,27 @@ export class UserService {
     };
   }
 
-  async getUserById(id: any): Promise<any> {
-    return await this.repo.findById(id);
+  async getUserById(id: number) {
+    const user = await this.repo.findById(id);
+    if (!user) throw new Error("User not found");
+    return user;
   }
 
-  async updateUser(id: any, data: any): Promise<any> {
+  async updateUser(id: number, data: any) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new Error("User not found");
+
     await this.repo.update(id, data);
     return await this.repo.findById(id);
   }
 
-  async deleteUser(id: any): Promise<void> {
+  async deleteUser(id: number) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new Error("User not found");
+
     await this.repo.delete(id);
   }
+
 }
 
 export function buildUser(input: CreateUserInput): Omit<User, "id"> {
