@@ -8,10 +8,13 @@
     "esModuleInterop": true,
     "strict": true,
     "sourceMap": true,
-    "types": ["node"],
     "skipLibCheck": true
   },
-
-  "include": ["src/**/*", "src/sentry.test.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "src/sentry.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

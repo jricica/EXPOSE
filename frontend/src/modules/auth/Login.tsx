@@ -31,7 +31,7 @@ const Login: React.FC = () => {
 
         <div className="login-info">
           <p>No profiles. No likes.</p>
-          <p>Posts disappear in 1 hour.</p>
+          <p>Posts disappear in hours.</p>
         </div>
       </div>
     </div>
