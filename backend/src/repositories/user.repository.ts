@@ -1,41 +1,65 @@
 import { query } from "../db/pool";
-import { User, UserId } from "../models/user.model";
+import { User, UserId, CreateUserInput } from "../models/user.model";
 
 export class UserRepository {
 
-  async findById(id: UserId): Promise<User | null> {
-    const results = await query<User[]>(
-      "SELECT * FROM users WHERE id = ?",
-      [id]
-    );
-    return results.length ? results[0] : null;
-  }
+    static async findById(id: UserId): Promise<User | null> {
+        const results = await query<User[]>(
+            "SELECT * FROM users WHERE id = ?",
+            [id]
+        );
+        return results.length ? results[0] : null;
+    }
 
-  async update(id: UserId, data: Partial<User>): Promise<void> {
-    await query(
-      "UPDATE users SET username = ?, email = ? WHERE id = ?",
-      [data.username, data.email, id]
-    );
-  }
+    static async findByEmail(email: string): Promise<User | null> {
+        const results = await query<User[]>(
+            "SELECT * FROM users WHERE email = ?",
+            [email]
+        );
+        return results.length ? results[0] : null;
+    }
 
-  async delete(id: UserId): Promise<void> {
-    await query("DELETE FROM users WHERE id = ?", [id]);
-  }
+    static async create(data: CreateUserInput): Promise<UserId> {
+        const result = await query<any>(
+            "INSERT INTO users (username, email, passwordHash) VALUES (?, ?, ?)",
+            [data.username, data.email, data.passwordHash]
+        );
+        return result.insertId;
+    }
 
-  static async update(id: UserId, data: Partial<User>): Promise<void> {
-    await query(
-        'UPDATE users SET username = ?, email = ? WHERE id = ?',
-        [data.username, data.email, id]
-    );
-  }
+    static async update(id: UserId, data: Partial<User>): Promise<void> {
+        await query(
+            "UPDATE users SET username = ?, email = ? WHERE id = ?",
+            [data.username, data.email, id]
+        );
+    }
 
-static async delete(id: UserId): Promise<void> {
-    await query(
-        'DELETE FROM users WHERE id = ?',
-        [id]
-    );
-  }
+    static async delete(id: UserId): Promise<void> {
+        await query("DELETE FROM users WHERE id = ?", [id]);
+    }
+
+    /**
+   * Instance methods for compatibility with injected services
+   */
+    async findById(id: UserId): Promise<User | null> {
+        return UserRepository.findById(id);
+    }
+
+    async findByEmail(email: string): Promise<User | null> {
+        return UserRepository.findByEmail(email);
+    }
+
+    async create(data: CreateUserInput): Promise<UserId> {
+        return UserRepository.create(data);
+    }
+
+    async update(id: UserId, data: Partial<User>): Promise<void> {
+        return UserRepository.update(id, data);
+    }
+
+    async delete(id: UserId): Promise<void> {
+        return UserRepository.delete(id);
+    }
 }
-
 
 export const userRepository = new UserRepository();

@@ -27,21 +27,25 @@ export interface LoginResponse {
 
 export class AuthService {
   async register(input: RegisterInput): Promise<Omit<User, 'passwordHash'>> {
+    console.log("Registering user:", { username: input.username, email: input.email });
     const username = validateUsername(input.username);
     const email = validateEmail(input.email);
     validatePassword(input.password);
 
     const existing = await UserRepository.findByEmail(email);
     if (existing) {
+      console.log("Registration failed: Email already exists", email);
       throw new Error("El email ya está registrado");
     }
 
     const passwordHash = await bcrypt.hash(input.password, 10);
+    console.log("Password hashed successfully");
     const userId = await UserRepository.create({
       username,
       email,
       passwordHash,
     });
+    console.log("User created in DB with ID:", userId);
 
     const user = await UserRepository.findById(userId);
     if (!user) throw new Error("Error al crear usuario");

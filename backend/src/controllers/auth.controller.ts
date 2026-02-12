@@ -7,6 +7,7 @@ export const register = async (req: Request, res: Response) => {
     const user = await authService.register(req.body);
     res.status(201).json(user);
   } catch (err) {
+    console.error("Register Error:", err);
     Sentry.captureException(err);
     const message = err instanceof Error ? err.message : "Error en el registro";
     if (message === "User entered an invalid password.") {
