@@ -13,6 +13,8 @@ export interface User {
     username: string;
     email: string;
     passwordHash: string;
+    role: number;
+    friends: UserId[];
     createdAt: Date;
 }
 

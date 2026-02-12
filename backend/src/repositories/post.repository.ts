@@ -1,76 +1,112 @@
-type LikeRecord = {
-	id: string;
-	postId: string;
-	userId: string;
-	createdAt: Date;
-};
+import { query } from '../db/pool';
+import { Post, PostId, LikeRecord } from '../models/post.model';
+import { UserId } from '../models/user.model';
 
-const likes: LikeRecord[] = [];
-const posts: PostRecord[] = [];
+export interface PostRepositoryFindManyFilters {
+	userId?: UserId;
+	expiresAfter?: Date;
+	currentUserId?: UserId;
+}
 
-import { randomUUID } from "crypto";
-import { PostRecord } from "../services/post.service";
-
-
-
-export const likeRepository = {
-	async find(postId: string, userId: string): Promise<LikeRecord | null> {
-		return likes.find(l => l.postId === postId && l.userId === userId) ?? null;
-	},
-
-	async create(postId: string, userId: string): Promise<LikeRecord> {
-		const like: LikeRecord = {
-			id: randomUUID(),
-			postId,
-			userId,
-			createdAt: new Date(),
-		};
-
-		likes.push(like);
-		return like;
-	},
-
-	async delete(id: string): Promise<void> {
-		const index = likes.findIndex(l => l.id === id);
-		if (index !== -1) likes.splice(index, 1);
-	},
-
-    async toggleLikeAtomic(postId: string, userId: string): Promise<PostRecord | null> {
-	const postIndex = posts.findIndex(p => p.id === postId);
-	if (postIndex === -1) return null;
-
-	const likeIndex = likes.findIndex(
-		l => l.postId === postId && l.userId === userId
-	);
-
-	// Like
-	if (likeIndex === -1) {
-		likes.push({
-			id: randomUUID(),
-			postId,
-			userId,
-			createdAt: new Date(),
-		});
-
-		posts[postIndex] = {
-			...posts[postIndex],
-			likes: posts[postIndex].likes + 1,
-		};
-
-		return posts[postIndex];
+export class PostRepository {
+	async create(data: Omit<Post, 'id' | 'likes' | 'likedByMe'>): Promise<PostId> {
+		const result = await query<any>(
+			'INSERT INTO posts (userId, content, createdAt, expiresAt) VALUES (?, ?, ?, ?)',
+			[data.userId, data.content, data.createdAt, data.expiresAt]
+		);
+		return result.insertId;
 	}
 
-	// Quitar Like o dislike 
-	likes.splice(likeIndex, 1);
+	async findById(id: PostId, currentUserId?: UserId): Promise<Post | null> {
+		const sql = currentUserId
+			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
+               FROM posts p 
+               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
+               WHERE p.id = ?`
+			: 'SELECT * FROM posts WHERE id = ?';
 
-	posts[postIndex] = {
-		...posts[postIndex],
-		likes: Math.max(posts[postIndex].likes - 1, 0),
-	};
+		const params = currentUserId ? [currentUserId, id] : [id];
+		const results = await query<any[]>(sql, params);
 
-	return posts[postIndex];
-}, 
+		if (results.length === 0) return null;
 
-};
+		const post = results[0];
+		if (currentUserId) {
+			post.likedByMe = Boolean(post.likedByMe);
+		}
+		return post as Post;
+	}
+
+	async findMany(filters: PostRepositoryFindManyFilters = {}): Promise<Post[]> {
+		const { currentUserId } = filters;
+
+		let sql = currentUserId
+			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
+               FROM posts p 
+               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
+               WHERE 1=1`
+			: 'SELECT * FROM posts WHERE 1=1';
+
+		const params: any[] = [];
+		if (currentUserId) {
+			params.push(currentUserId);
+		}
+
+		if (filters.userId) {
+			sql += ' AND p.userId = ?';
+			params.push(filters.userId);
+		}
+
+		if (filters.expiresAfter) {
+			sql += ' AND p.expiresAt > ?';
+			params.push(filters.expiresAfter);
+		}
+
+		sql += ' ORDER BY p.createdAt DESC';
+
+		const results = await query<any[]>(sql, params);
+
+		return results.map(post => ({
+			...post,
+			likedByMe: currentUserId ? Boolean(post.likedByMe) : false
+		})) as Post[];
+	}
+
+	async updateExpiresAt(id: PostId, expiresAt: Date): Promise<void> {
+		await query(
+			'UPDATE posts SET expiresAt = ? WHERE id = ?',
+			[expiresAt, id]
+		);
+	}
+
+	async delete(id: PostId): Promise<void> {
+  		await query('DELETE FROM posts WHERE id = ?', [id]);
+	}
 
 
+	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+		const existing = await query<LikeRecord[]>(
+			'SELECT * FROM post_likes WHERE postId = ? AND userId = ?',
+			[postId, userId]
+		);
+
+		if (existing.length > 0) {
+			await query('DELETE FROM post_likes WHERE postId = ? AND userId = ?', [postId, userId]);
+			await query('UPDATE posts SET likes = likes - 1 WHERE id = ?', [postId]);
+		} else {
+			try {
+				await query('INSERT INTO post_likes (postId, userId, createdAt) VALUES (?, ?, NOW())', [postId, userId]);
+				await query('UPDATE posts SET likes = likes + 1 WHERE id = ?', [postId]);
+			} catch (error: any) {
+				if (error.code !== 'ER_DUP_ENTRY') {
+					throw error;
+				}
+			}
+		}
+
+		const updated = await this.findById(postId);
+		return updated?.likes ?? 0;
+	}
+}
+
+export const postRepository = new PostRepository();
