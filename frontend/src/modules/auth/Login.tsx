@@ -1,17 +1,33 @@
 import React from "react";
+import { useState } from "react";
+import Spinner from "../../components/Spinner";
 import "./Login.css";
 
-const Login: React.FC = () => {
+const Login = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setLoading(true);
+
+    // Simulación de request al backend
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setLoading(false);
+  };
+
   return (
     <div className="login-container">
       <div className="login-card">
         <h1 className="login-title">EXPOSE</h1>
+
         <p className="login-subtitle">
-        <div className="login-divider" />
+          <div className="login-divider" />
           Share the moment. Disappear.
         </p>
 
-        <form className="login-form">
+        <form className="login-form" onSubmit={handleSubmit}>
           <input
             type="text"
             placeholder="Username or email"
@@ -24,8 +40,12 @@ const Login: React.FC = () => {
             className="login-input"
           />
 
-          <button type="submit" className="login-button">
-            Enter
+          <button
+            type="submit"
+            className="login-button"
+            disabled={loading}
+          >
+            {loading ? <Spinner /> : "Enter"}
           </button>
         </form>
 
