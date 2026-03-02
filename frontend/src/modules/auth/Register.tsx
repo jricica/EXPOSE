@@ -1,13 +1,15 @@
 import { useState } from "react";
-import "./Login.css"; 
+import Spinner from "../../components/Spinner";
+import "./Login.css";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password || !confirmPassword) {
@@ -21,6 +23,12 @@ const Register = () => {
     }
 
     setError("");
+    setLoading(true);
+
+    // Simulación de request al backend
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setLoading(false);
   };
 
   return (
@@ -38,6 +46,7 @@ const Register = () => {
             className="login-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
           />
 
           <input
@@ -46,6 +55,7 @@ const Register = () => {
             className="login-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
           />
 
           <input
@@ -54,11 +64,18 @@ const Register = () => {
             className="login-input"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            disabled={loading}
           />
 
           {error && <p className="login-error">{error}</p>}
 
-          <button className="login-button">Register</button>
+          <button
+            type="submit"
+            className="login-button"
+            disabled={loading}
+          >
+            {loading ? <Spinner /> : "Register"}
+          </button>
         </form>
 
         <div className="login-info">
