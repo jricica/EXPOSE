@@ -1,0 +1,22 @@
+.notfound-container {
+    text-align: center;
+    padding: 4rem;
+  }
+  
+  .notfound-title {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .notfound-text {
+    margin-bottom: 2rem;
+    font-size: 1.2rem;
+  }
+  
+  .notfound-button {
+    padding: 0.8rem 1.5rem;
+    background-color: black;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+  }
