@@ -12,6 +12,7 @@ type Post = {
   userId?: number;
 };
 
+
 const Feed: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
@@ -72,6 +73,35 @@ const Feed: React.FC = () => {
     );
   }
 
+  if (!filteredPosts.length) {
+    return (
+      <div
+        style={{
+          padding: "3rem",
+          textAlign: "center",
+          opacity: 0.85,
+        }}
+      >
+        <div style={{ fontSize: 42 }}>📭</div>
+        <h3 style={{ marginTop: 12 }}>Nada por aquí</h3>
+
+        <p style={{ fontSize: 14 }}>
+          {showOnlyMine
+            ? "Todavía no has publicado nada."
+            : "Cuando haya publicaciones, aparecerán aquí."}
+        </p>
+
+        {isAuthenticated && (
+          <button
+            onClick={() => setShowOnlyMine(!showOnlyMine)}
+            style={{ marginTop: 16 }}
+          >
+            {showOnlyMine ? "Ver todos los posts" : "Ver solo mis posts"}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "1rem", display: "grid", gap: "12px" }}>
