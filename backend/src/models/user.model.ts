@@ -16,6 +16,7 @@ export interface User {
     role: number;
     friends: UserId[];
     createdAt: Date;
+    lastLogin: Date | null;
 }
 
 /**
@@ -26,4 +27,5 @@ export interface CreateUserInput {
     username: string;
     email: string;
     passwordHash: string;
+    lastLogin?: Date | null;
 }

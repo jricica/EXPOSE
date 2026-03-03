@@ -21,8 +21,8 @@ export class UserRepository {
 
     static async create(data: CreateUserInput): Promise<UserId> {
         const result = await query<any>(
-            "INSERT INTO users (username, email, passwordHash) VALUES (?, ?, ?)",
-            [data.username, data.email, data.passwordHash]
+            "INSERT INTO users (username, email, passwordHash, lastLogin) VALUES (?, ?, ?, ?)",
+            [data.username, data.email, data.passwordHash, data.lastLogin ?? null]
         );
         return result.insertId;
     }
@@ -32,6 +32,10 @@ export class UserRepository {
             "UPDATE users SET username = ?, email = ? WHERE id = ?",
             [data.username, data.email, id]
         );
+    }
+
+    static async updateLastLogin(id: UserId, date: Date): Promise<void> {
+        await query("UPDATE users SET lastLogin = ? WHERE id = ?", [date, id]);
     }
 
     static async delete(id: UserId): Promise<void> {
@@ -55,6 +59,10 @@ export class UserRepository {
 
     async update(id: UserId, data: Partial<User>): Promise<void> {
         return UserRepository.update(id, data);
+    }
+
+    async updateLastLogin(id: UserId, date: Date): Promise<void> {
+        return UserRepository.updateLastLogin(id, date);
     }
 
     async delete(id: UserId): Promise<void> {
