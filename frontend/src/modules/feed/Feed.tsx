@@ -31,7 +31,11 @@ const Feed: React.FC = () => {
         setLoading(true);
         setError(null);
         const data = await get<Post[]>("/posts");
+        console.log('Feed data received:', data);
         if (!cancelled) {
+          if (!Array.isArray(data)) {
+            console.error('Expected an array of posts, but received:', typeof data, data);
+          }
           setPosts(data);
         }
       } catch (err) {
@@ -54,11 +58,12 @@ const Feed: React.FC = () => {
     };
   }, []);
 
-  // posts filtrados
-  const filteredPosts =
-    showOnlyMine && user
+  // posts filtrados - Asegurar que posts sea un array
+  const filteredPosts = Array.isArray(posts)
+    ? (showOnlyMine && user
       ? posts.filter((post) => post.userId === user.id)
-      : posts;
+      : posts)
+    : [];
 
   if (loading) {
     return <div style={{ padding: "1rem" }}>Cargando feed...</div>;

@@ -22,7 +22,7 @@ export class UserRepository {
     static async create(data: CreateUserInput): Promise<UserId> {
         const result = await query<any>(
             "INSERT INTO users (username, email, passwordHash, lastLogin) VALUES (?, ?, ?, ?)",
-            [data.username, data.email, data.passwordHash, data.lastLogin ?? null]
+            [data.username, data.email, data.passwordHash, data.lastLogin || null]
         );
         return result.insertId;
     }

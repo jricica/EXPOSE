@@ -26,7 +26,7 @@ const Login: React.FC = () => {
       setLoading(true);
       setError("");
       const response = await authService.login(email, password);
-      authLogin(response.token.accessToken);
+      authLogin(response.token.accessToken, response.user);
       window.location.href = "/";
     } catch (err: any) {
       setError(err.message || "Failed to login. Please check your credentials.");
