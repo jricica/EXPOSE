@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { get, HttpError } from "../../../services/api";
 import { useAuth } from "../auth/AuthContext";
 
+
+
+
 type Post = {
   id: number;
   content: string;
