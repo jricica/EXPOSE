@@ -1,24 +1,45 @@
 import { Request, Response } from "express";
-import { registerUser } from "../services/auth.service";
+import { authService } from "../services/auth.service";
+import * as Sentry from "@sentry/node";
+import { recordLoginFailure, recordLoginSuccess } from "../middlewares/authRateLimit.middleware";
+import { AuthRequest } from "../types/auth-context";
 
-export async function register(req: Request, res: Response) {
+export const register = async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body ?? {};
-    const user = await registerUser({ username, email, password });
-
-    res.status(201).json({
-      success: true,
-      message: "User registered",
-      data: user,
-    });
+    const user = await authService.register(req.body);
+    res.status(201).json(user);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected error";
-    const status = message === "Email already registered" ? 409 : 400;
-
-    res.status(status).json({
-      success: false,
-      message,
-      data: null,
-    });
+    console.error("Register Error:", err);
+    Sentry.captureException(err);
+    const message = err instanceof Error ? err.message : "Error en el registro";
+    if (message === "User entered an invalid password.") {
+      return res.status(400).json({ Code: 1000, Message: message });
+    }
+    res.status(400).json({ message });
   }
-}
+};
+
+export const login = async (req: Request, res: Response) => {
+  try {
+    const response = await authService.login(req.body);
+    recordLoginSuccess(req);
+    res.json(response);
+  } catch (err) {
+    Sentry.captureException(err);
+    recordLoginFailure(req);
+    const message = err instanceof Error ? err.message : "Error en el login";
+    res.status(401).json({ message });
+  }
+};
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.context) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+    res.json(req.context);
+  } catch (err) {
+    Sentry.captureException(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

@@ -1,18 +1,23 @@
 import { useState } from "react";
-import Spinner from "../../components/Spinner";
 import "./Login.css";
+import { authService } from "./auth.service";
+import { useAuth } from "./AuthContext";
 
-const Register = () => {
+interface RegisterProps {
+  onBack: () => void;
+}
+
+const Register = ({ onBack }: RegisterProps) => {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password || !confirmPassword) {
+    if (!username || !email || !password || !confirmPassword) {
       setError("Todos los campos son obligatorios.");
       return;
     }
@@ -23,12 +28,6 @@ const Register = () => {
     }
 
     setError("");
-    setLoading(true);
-
-    // Simulación de request al backend
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setLoading(false);
   };
 
   return (
@@ -42,7 +41,16 @@ const Register = () => {
         <form className="login-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Username or email"
+            placeholder="Username"
+            className="login-input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+          />
+
+          <input
+            type="email"
+            placeholder="Email address"
             className="login-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -67,16 +75,21 @@ const Register = () => {
             disabled={loading}
           />
 
-          {error && <p className="login-error">{error}</p>}
+          {error && <p style={{ color: "#ff4444", fontSize: "0.8rem", margin: "10px 0" }}>{error}</p>}
 
+          <button className="login-button">Register</button>
+        </form>
+
+        <div className="login-footer">
           <button
-            type="submit"
-            className="login-button"
+            type="button"
+            className="login-link"
+            onClick={onBack}
             disabled={loading}
           >
-            {loading ? <Spinner /> : "Register"}
+            Already have an account? Login
           </button>
-        </form>
+        </div>
 
         <div className="login-info">
           <p>No profiles. No likes.</p>
