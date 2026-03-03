@@ -65,6 +65,10 @@ export class AuthService {
       throw new Error("Credenciales inválidas");
     }
 
+    const now = new Date();
+    await UserRepository.updateLastLogin(user.id, now);
+    user.lastLogin = now;
+
     const accessToken = jwt.sign(
       { sub: user.id.toString(), email: user.email, username: user.username },
       JWT_SECRET,

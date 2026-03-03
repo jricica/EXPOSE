@@ -61,7 +61,8 @@ export class UserService {
       email: email,
       password: input.password,
       role: input.role || 1,
-      friends: input.friends || []
+      friends: input.friends || [],
+      lastLogin: input.lastLogin ?? null
     };
   }
 
@@ -96,5 +97,6 @@ export function buildUser(input: CreateUserInput): Omit<User, "id"> {
     role: 1,
     friends: [],
     createdAt: new Date(),
+    lastLogin: input.lastLogin ?? null,
   };
 }
