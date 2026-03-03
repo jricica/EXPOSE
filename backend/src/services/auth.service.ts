@@ -1,6 +1,10 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
-import { User } from "../models/user.model";
-import { buildUser, validateEmail, validateUsername } from "./user.service";
+import * as Sentry from "@sentry/node";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { User, CreateUserInput } from "../models/user.model";
+import { UserRepository } from "../repositories/user.repository";
+import { JWT_SECRET } from "../config/env";
+import { validateEmail, validateUsername, validatePassword } from "./user.service";
 
 export interface RegisterInput {
   username: string;
@@ -8,59 +12,78 @@ export interface RegisterInput {
   password: string;
 }
 
-export interface PublicUser {
-  id: number;
-  username: string;
+export interface LoginInput {
   email: string;
-  createdAt: Date;
+  password: string;
 }
 
-const users: User[] = [];
-let nextId = 1;
-
-function hashPassword(plain: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const derived = pbkdf2Sync(plain, salt, 10_000, 64, "sha512").toString("hex");
-  return `${salt}:${derived}`;
-}
-
-function verifyPassword(plain: string, stored: string): boolean {
-  const [salt, original] = stored.split(":");
-  if (!salt || !original) return false;
-
-  const derived = pbkdf2Sync(plain, salt, 10_000, 64, "sha512").toString("hex");
-
-  const originalBuf = Buffer.from(original, "hex");
-  const derivedBuf = Buffer.from(derived, "hex");
-  if (originalBuf.length !== derivedBuf.length) return false;
-
-  return timingSafeEqual(originalBuf, derivedBuf);
-}
-
-function toPublicUser(user: User): PublicUser {
-  const { id, username, email, createdAt } = user;
-  return { id, username, email, createdAt };
-}
-
-export async function registerUser(input: RegisterInput): Promise<PublicUser> {
-  const username = validateUsername(input.username);
-  const email = validateEmail(input.email);
-
-  if (!input.password || input.password.length < 6) {
-    throw new Error("Password must be at least 6 characters");
-  }
-
-  const duplicate = users.find((u) => u.email === email);
-  if (duplicate) {
-    throw new Error("Email already registered");
-  }
-
-  const passwordHash = hashPassword(input.password);
-  const user: User = {
-    ...buildUser({ username, email, passwordHash }),
-    id: nextId++,
+export interface LoginResponse {
+  user: Omit<User, 'passwordHash'>;
+  token: {
+    accessToken: string;
+    expiresIn: number;
   };
-
-  users.push(user);
-  return toPublicUser(user);
 }
+
+export class AuthService {
+  async register(input: RegisterInput): Promise<Omit<User, 'passwordHash'>> {
+    console.log("Registering user:", { username: input.username, email: input.email });
+    const username = validateUsername(input.username);
+    const email = validateEmail(input.email);
+    validatePassword(input.password);
+
+    const existing = await UserRepository.findByEmail(email);
+    if (existing) {
+      console.log("Registration failed: Email already exists", email);
+      throw new Error("El email ya está registrado");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    console.log("Password hashed successfully");
+    const userId = await UserRepository.create({
+      username,
+      email,
+      passwordHash,
+    });
+    console.log("User created in DB with ID:", userId);
+
+    const user = await UserRepository.findById(userId);
+    if (!user) throw new Error("Error al crear usuario");
+
+    const { passwordHash: _, ...publicUser } = user;
+    return publicUser;
+  }
+
+  async login(input: LoginInput): Promise<LoginResponse> {
+    const user = await UserRepository.findByEmail(input.email);
+    if (!user) {
+      throw new Error("Credenciales inválidas");
+    }
+
+    const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new Error("Credenciales inválidas");
+    }
+
+    const now = new Date();
+    await UserRepository.updateLastLogin(user.id, now);
+    user.lastLogin = now;
+
+    const accessToken = jwt.sign(
+      { sub: user.id.toString(), email: user.email, username: user.username },
+      JWT_SECRET,
+      { expiresIn: "7d", algorithm: "HS256" }
+    );
+
+    const { passwordHash: _, ...publicUser } = user;
+    return {
+      user: publicUser,
+      token: {
+        accessToken,
+        expiresIn: 7 * 24 * 60 * 60,
+      }
+    };
+  }
+}
+
+export const authService = new AuthService();
