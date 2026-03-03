@@ -3,7 +3,9 @@ const API_BASE_URL = (() => {
   if (rawBase && /^https?:\/\//i.test(rawBase)) return rawBase;
   const basePath = rawBase && rawBase !== '' ? rawBase : '/api';
   const normalized = basePath.startsWith('/') ? basePath : `/${basePath}`;
-  return `${window.location.origin}${normalized}`;
+  const url = `${window.location.origin}${normalized}`;
+  console.log('API_BASE_URL:', url);
+  return url;
 })();
 
 let authToken: string | null = null;

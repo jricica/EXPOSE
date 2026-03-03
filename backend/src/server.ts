@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 
@@ -6,6 +7,7 @@ import path from 'path';
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 // Serve static files from the frontend build

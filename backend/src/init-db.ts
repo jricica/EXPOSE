@@ -20,18 +20,26 @@ async function initDb() {
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await connection.query(`USE \`${dbName}\`;`);
 
-    // Tabla de Usuarios
+    // Tabla de Usuarios - Asegurar lastLogin
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(50) NOT NULL UNIQUE,
         email VARCHAR(255) NOT NULL UNIQUE,
         passwordHash VARCHAR(255) NOT NULL,
+        lastLogin DATETIME DEFAULT NULL,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
     `);
 
-    // Tabla de Posts
+    // Verificar si lastLogin existe, si no, añadirla
+    const [userCols] = await connection.query('SHOW COLUMNS FROM users LIKE "lastLogin"');
+    if ((userCols as any[]).length === 0) {
+      console.log('Añadiendo columna lastLogin a users...');
+      await connection.query('ALTER TABLE users ADD COLUMN lastLogin DATETIME DEFAULT NULL AFTER passwordHash');
+    }
+
+    // Tabla de Posts - Asegurar is_deleted
     await connection.query(`
       CREATE TABLE IF NOT EXISTS posts (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -40,9 +48,17 @@ async function initDb() {
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         expiresAt DATETIME NOT NULL,
         likes INT DEFAULT 0,
+        is_deleted TINYINT(1) NOT NULL DEFAULT 0,
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
+
+    // Verificar si is_deleted existe, si no, añadirla
+    const [postCols] = await connection.query('SHOW COLUMNS FROM posts LIKE "is_deleted"');
+    if ((postCols as any[]).length === 0) {
+      console.log('Añadiendo columna is_deleted a posts...');
+      await connection.query('ALTER TABLE posts ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0');
+    }
 
     // Tabla de Likes
     await connection.query(`

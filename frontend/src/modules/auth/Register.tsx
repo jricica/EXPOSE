@@ -34,7 +34,7 @@ const Register = ({ onBack }: RegisterProps) => {
       setLoading(true);
       setError("");
       const response = await authService.register(username, email, password);
-      authLogin(response.token.accessToken);
+      authLogin(response.token.accessToken, response.user);
       window.location.href = "/";
     } catch (err: any) {
       setError(err.message || "Error al registrarse. Intenta con otro correo o nombre de usuario.");
