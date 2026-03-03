@@ -2,9 +2,6 @@ import React, { useEffect, useState } from "react";
 import { get, HttpError } from "../../../services/api";
 import { useAuth } from "../auth/AuthContext";
 
-
-
-
 type Post = {
   id: number;
   content: string;
@@ -16,10 +13,14 @@ type Post = {
 };
 
 const Feed: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // estado para filtro
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +53,12 @@ const Feed: React.FC = () => {
     };
   }, []);
 
+  // posts filtrados
+  const filteredPosts =
+    showOnlyMine && user
+      ? posts.filter((post) => post.userId === user.id)
+      : posts;
+
   if (loading) {
     return <div style={{ padding: "1rem" }}>Cargando feed...</div>;
   }
@@ -65,13 +72,22 @@ const Feed: React.FC = () => {
     );
   }
 
-  if (!posts.length) {
-    return <div style={{ padding: "1rem" }}>No hay publicaciones aún.</div>;
-  }
 
   return (
     <div style={{ padding: "1rem", display: "grid", gap: "12px" }}>
-      {posts.map((post) => (
+      {isAuthenticated && (
+        <button
+          onClick={() => setShowOnlyMine(!showOnlyMine)}
+          style={{
+            marginBottom: "1rem",
+            alignSelf: "flex-start",
+          }}
+        >
+          {showOnlyMine ? "Ver todos los posts" : "Mis posts"}
+        </button>
+      )}
+
+      {filteredPosts.map((post) => (
         <article
           key={post.id}
           style={{
@@ -83,8 +99,10 @@ const Feed: React.FC = () => {
           }}
         >
           <p style={{ margin: 0 }}>{post.content}</p>
+
           <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
             <span>{post.likes ?? 0} likes</span>
+
             {post.createdAt && (
               <span style={{ marginLeft: 12 }}>
                 Publicado: {new Date(post.createdAt).toLocaleString()}
