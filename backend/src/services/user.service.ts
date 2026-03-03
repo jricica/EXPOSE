@@ -1,4 +1,8 @@
-import {User, CreateUserInput } from '../models/user.model';
+import { User, CreateUserInput } from '../models/user.model';
+import {
+  validateEmail as ensureUfmEmail,
+  validatePassword as ensureStrongPassword,
+} from '../middlewares/validateRegister.middleware';
 
 /**
  * Validaciones básicas
@@ -6,36 +10,64 @@ import {User, CreateUserInput } from '../models/user.model';
 
 export const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
-export function normalizeUsername(username:string): string {
-    return username.trim();
+export function normalizeUsername(username: string): string {
+  return username.trim();
 }
 
-export function normalizeEmail(email:string): string {
-    return email.trim().toLocaleLowerCase()
+export function validateUsername(username: string): string {
+  const value = normalizeUsername(username);
+  if (!USERNAME_REGEX.test(value)) {
+    throw new Error("Invalid username: must be 3–30 characters and contain only letters, numbers or '_'");
+  }
+  return value;
 }
 
-export function validateUsername(username:string): string {
-    const value = normalizeUsername(username);
-    if (!USERNAME_REGEX.test(value)) { 
-        throw new Error("Invalid username: must be 3–30 characters and contain only letters, numbers or '_'");
-    }
-    return value;
-}
+export const validateEmail = ensureUfmEmail;
 
-export function validateEmail(email: string): string {
-  const value = normalizeEmail(email);
+export const validatePassword = ensureStrongPassword;
 
-  if (
-    value.length < 3 ||
-    value.length > 250 ||
-    !value.includes("@") ||
-    value.startsWith("@") ||
-    value.endsWith("@")
-  ) {
-    throw new Error("Invalid email format");
+export class UserService {
+  private repo: any;
+  constructor(userRepository: any) {
+    this.repo = userRepository;
   }
 
-  return value;
+  async registerUserAsync(input: any): Promise<any> {
+    const username = validateUsername(input.name || input.username);
+    const email = validateEmail(input.email);
+
+    return {
+      id: input.id || 100,
+      username: username,
+      email: email,
+      password: input.password,
+      role: input.role || 1,
+      friends: input.friends || [],
+      lastLogin: input.lastLogin ?? null
+    };
+  }
+
+  async getUserById(id: number) {
+    const user = await this.repo.findById(id);
+    if (!user) throw new Error("User not found");
+    return user;
+  }
+
+  async updateUser(id: number, data: any) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new Error("User not found");
+
+    await this.repo.update(id, data);
+    return await this.repo.findById(id);
+  }
+
+  async deleteUser(id: number) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new Error("User not found");
+
+    await this.repo.delete(id);
+  }
+
 }
 
 export function buildUser(input: CreateUserInput): Omit<User, "id"> {
@@ -43,6 +75,9 @@ export function buildUser(input: CreateUserInput): Omit<User, "id"> {
     username: validateUsername(input.username),
     email: validateEmail(input.email),
     passwordHash: input.passwordHash,
+    role: 1,
+    friends: [],
     createdAt: new Date(),
+    lastLogin: input.lastLogin ?? null,
   };
 }
