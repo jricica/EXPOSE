@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import * as Sentry from "@sentry/node";
+import { recordLoginFailure, recordLoginSuccess } from "../middlewares/authRateLimit.middleware";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -20,9 +21,11 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const response = await authService.login(req.body);
+    recordLoginSuccess(req);
     res.json(response);
   } catch (err) {
     Sentry.captureException(err);
+    recordLoginFailure(req);
     const message = err instanceof Error ? err.message : "Error en el login";
     res.status(401).json({ message });
   }
