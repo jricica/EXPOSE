@@ -1,4 +1,8 @@
 import { User, CreateUserInput } from '../models/user.model';
+import {
+  validateEmail as ensureUfmEmail,
+  validatePassword as ensureStrongPassword,
+} from '../middlewares/validateRegister.middleware';
 
 /**
  * Validaciones básicas
@@ -10,10 +14,6 @@ export function normalizeUsername(username: string): string {
   return username.trim();
 }
 
-export function normalizeEmail(email: string): string {
-  return email.trim().toLocaleLowerCase()
-}
-
 export function validateUsername(username: string): string {
   const value = normalizeUsername(username);
   if (!USERNAME_REGEX.test(value)) {
@@ -22,28 +22,9 @@ export function validateUsername(username: string): string {
   return value;
 }
 
-export function validateEmail(email: string): string {
-  const value = normalizeEmail(email);
+export const validateEmail = ensureUfmEmail;
 
-  if (
-    value.length < 3 ||
-    value.length > 250 ||
-    !value.includes("@") ||
-    value.startsWith("@") ||
-    value.endsWith("@")
-  ) {
-    throw new Error("Invalid email format");
-  }
-
-  return value;
-}
-
-export function validatePassword(password: string): string {
-  if (password.length < 8) {
-    throw new Error("User entered an invalid password.");
-  }
-  return password;
-}
+export const validatePassword = ensureStrongPassword;
 
 export class UserService {
   private repo: any;
