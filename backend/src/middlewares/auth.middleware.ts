@@ -9,21 +9,7 @@ import * as Sentry from '@sentry/node';
 import crypto from 'crypto';
 import { JWT_SECRET } from '../config/env';
 import { UserRepository } from '../repositories/user.repository';
-import { UserContext, UnauthorizedError } from '../types/auth-context';
-
-export interface UserJwtPayload extends JwtPayload {
-  sub: string;
-  email: string;
-  role?: string;
-}
-
-/**
- * Interface extendida para compatibilidad interna
- */
-interface ExtendedRequest extends Request {
-  context?: UserContext;
-  user?: any;
-}
+import { UserContext, UnauthorizedError, AuthRequest, UserJwtPayload } from '../types/auth-context';
 
 const handleAuthError = (res: Response, error: any) => {
   if (error instanceof UnauthorizedError) {
@@ -83,8 +69,8 @@ export const authMiddleware = async (
       role: decoded.role,
     };
 
-    // Casting a ExtendedRequest para evitar errores de compilación
-    const extendedReq = req as ExtendedRequest;
+    // Casting a AuthRequest para evitar errores de compilación
+    const extendedReq = req as AuthRequest;
     extendedReq.context = context;
     extendedReq.user = decoded;
 
@@ -135,7 +121,7 @@ export const optionalAuthMiddleware = async (
           role: decoded.role,
         };
 
-        const extendedReq = req as ExtendedRequest;
+        const extendedReq = req as AuthRequest;
         extendedReq.context = context;
         extendedReq.user = decoded;
       }
