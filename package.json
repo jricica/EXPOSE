@@ -1,5 +1,33 @@
 {
   "dependencies": {
+    "@prisma/adapter-mariadb": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "dotenv": "^17.3.1",
     "mysql2": "^3.17.0"
+  },
+  "name": "expose",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jricica/EXPOSE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jricica/EXPOSE/issues"
+  },
+  "homepage": "https://github.com/jricica/EXPOSE#readme",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "prisma": "^7.4.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
