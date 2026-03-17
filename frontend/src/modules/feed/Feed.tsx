@@ -19,44 +19,59 @@ const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // estado para filtro
   const [showOnlyMine, setShowOnlyMine] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
+  const loadPosts = async (pageNum: number, isInitial: boolean = false) => {
+    try {
+      if (isInitial) {
         setLoading(true);
-        setError(null);
-        const data = await get<Post[]>("/posts");
-        console.log('Feed data received:', data);
-        if (!cancelled) {
-          if (!Array.isArray(data)) {
-            console.error('Expected an array of posts, but received:', typeof data, data);
-          }
-          setPosts(data);
-        }
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof HttpError) {
-          setError(err.message || `Error ${err.status}`);
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Error desconocido al cargar el feed");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      } else {
+        setLoadingMore(true);
       }
-    };
+      setError(null);
+      
+      const response = await get<any>(`/posts?page=${pageNum}&limit=20`);
+      console.log('Feed data received:', response);
 
-    load();
-    return () => {
-      cancelled = true;
-    };
+      const newPosts = response.posts || [];
+      const pagination = response.pagination || { hasNext: false };
+
+      if (isInitial) {
+        setPosts(newPosts);
+      } else {
+        setPosts((prev) => [...prev, ...newPosts]);
+      }
+      
+      setHasNext(pagination.hasNext);
+      setPage(pageNum);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(err.message || `Error ${err.status}`);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Error desconocido al cargar el feed");
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPosts(1, true);
   }, []);
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasNext) {
+      loadPosts(page + 1);
+    }
+  };
 
   // posts filtrados - Asegurar que posts sea un array
   const filteredPosts = Array.isArray(posts)
@@ -146,6 +161,24 @@ const Feed: React.FC = () => {
           </div>
         </article>
       ))}
+
+      {hasNext && (
+        <button
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          style={{
+            marginTop: "1rem",
+            padding: "10px",
+            background: "transparent",
+            border: "1px solid #444",
+            color: "#fff",
+            borderRadius: "4px",
+            cursor: loadingMore ? "not-allowed" : "pointer"
+          }}
+        >
+          {loadingMore ? "Cargando más..." : "Cargar más"}
+        </button>
+      )}
     </div>
   );
 };
