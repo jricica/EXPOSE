@@ -24,6 +24,19 @@ export interface PostListQuery {
 	userId?: UserId;
 	includeExpired?: boolean;
 	currentUserId?: UserId;
+	limit?: number;
+	page?: number;
+}
+
+export interface PaginatedPosts {
+	posts: Post[];
+	pagination: {
+		total: number;
+		limit: number;
+		page: number;
+		pages: number;
+		hasNext: boolean;
+	};
 }
 
 export class PostService {
@@ -49,12 +62,39 @@ export class PostService {
 		return post;
 	}
 
-	async listPosts(query: PostListQuery): Promise<Post[]> {
-		return await this.repository.findMany({
+	async listPosts(query: PostListQuery): Promise<PaginatedPosts> {
+		const limit = query.limit || 20;
+		const page = query.page || 1;
+		const offset = (page - 1) * limit;
+
+		const filters = {
 			userId: query.userId,
 			expiresAfter: query.includeExpired ? undefined : this.clock(),
 			currentUserId: query.currentUserId,
-		});
+			limit,
+			offset,
+		};
+
+		const [posts, total] = await Promise.all([
+			this.repository.findMany(filters),
+			this.repository.countMany({
+				userId: filters.userId,
+				expiresAfter: filters.expiresAfter,
+			}),
+		]);
+
+		const pages = Math.ceil(total / limit);
+
+		return {
+			posts,
+			pagination: {
+				total,
+				limit,
+				page,
+				pages,
+				hasNext: page < pages,
+			},
+		};
 	}
 
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {

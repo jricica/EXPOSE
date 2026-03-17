@@ -59,6 +59,17 @@ async function initDb() {
       await connection.query('ALTER TABLE posts ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0');
     }
 
+    // Asegurar índices en createdAt y expiresAt
+    const [createdAtIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_createdAt"');
+    if ((createdAtIdx as any[]).length === 0) {
+      await connection.query('CREATE INDEX idx_posts_createdAt ON posts(createdAt)');
+    }
+
+    const [expiresAtIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_expiresAt"');
+    if ((expiresAtIdx as any[]).length === 0) {
+      await connection.query('CREATE INDEX idx_posts_expiresAt ON posts(expiresAt)');
+    }
+
 
     const [mediaUrlCols] = await connection.query('SHOW COLUMNS FROM posts LIKE "media_url"');
     if ((mediaUrlCols as any[]).length === 0) {
