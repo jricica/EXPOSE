@@ -76,6 +76,21 @@ async function initDb() {
       await connection.query('ALTER TABLE posts ADD COLUMN media_url TEXT DEFAULT NULL AFTER content');
     }
 
+    // Tabla de Comentarios
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        postId INT NOT NULL,
+        userId INT NOT NULL,
+        content TEXT NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_comments_postId_createdAt (postId, createdAt),
+        FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
+    `);
+
     // Perfil de Usuario - bio, display_name, avatar_url
     const [bioCols] = await connection.query('SHOW COLUMNS FROM users LIKE "bio"');
     if ((bioCols as any[]).length === 0) {
