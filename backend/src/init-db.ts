@@ -76,6 +76,22 @@ async function initDb() {
       await connection.query('ALTER TABLE posts ADD COLUMN media_url TEXT DEFAULT NULL AFTER content');
     }
 
+    // Perfil de Usuario - bio, display_name, avatar_url
+    const [bioCols] = await connection.query('SHOW COLUMNS FROM users LIKE "bio"');
+    if ((bioCols as any[]).length === 0) {
+      await connection.query('ALTER TABLE users ADD COLUMN bio TEXT DEFAULT NULL AFTER email');
+    }
+
+    const [displayNameCols] = await connection.query('SHOW COLUMNS FROM users LIKE "display_name"');
+    if ((displayNameCols as any[]).length === 0) {
+      await connection.query('ALTER TABLE users ADD COLUMN display_name VARCHAR(100) DEFAULT NULL AFTER bio');
+    }
+
+    const [avatarUrlCols] = await connection.query('SHOW COLUMNS FROM users LIKE "avatar_url"');
+    if ((avatarUrlCols as any[]).length === 0) {
+      await connection.query('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL AFTER display_name');
+    }
+
     // Tabla de Likes
     await connection.query(`
       CREATE TABLE IF NOT EXISTS post_likes (
@@ -94,6 +110,7 @@ async function initDb() {
     await connection.end();
     process.exit(0);
   } catch (error) {
+    console.error('❌ Error initializing database:', error);
     Sentry.captureException(error);
     process.exit(1);
   }
