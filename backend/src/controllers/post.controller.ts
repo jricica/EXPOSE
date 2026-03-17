@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/node";
 
 export const createPost = async (req: Request, res: Response) => {
 	try {
-		const { content, ttl } = req.body;
+		const { content, ttl, mediaUrl } = req.body;
 		const userId = getUserId(req);
 
 		if (!content) {
@@ -16,6 +16,7 @@ export const createPost = async (req: Request, res: Response) => {
 			userId,
 			content,
 			ttl,
+			mediaUrl,
 		});
 
 		res.status(201).json(post);
