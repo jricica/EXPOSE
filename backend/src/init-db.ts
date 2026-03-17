@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import * as Sentry from '@sentry/node';
 dotenv.config();
 
 async function initDb() {
@@ -13,7 +14,6 @@ async function initDb() {
   const dbName = process.env.DB_NAME || 'expose';
 
   try {
-    console.log(`Conectando al servidor MySQL para inicializar base de datos y tablas...`);
     const connection = await mysql.createConnection(connectionConfig);
 
     // Crear DB
@@ -35,16 +35,16 @@ async function initDb() {
     // Verificar si lastLogin existe, si no, añadirla
     const [userCols] = await connection.query('SHOW COLUMNS FROM users LIKE "lastLogin"');
     if ((userCols as any[]).length === 0) {
-      console.log('Añadiendo columna lastLogin a users...');
       await connection.query('ALTER TABLE users ADD COLUMN lastLogin DATETIME DEFAULT NULL AFTER passwordHash');
     }
 
-    // Tabla de Posts - Asegurar is_deleted
+    // Tabla de Posts - Asegurar is_deleted y media_url
     await connection.query(`
       CREATE TABLE IF NOT EXISTS posts (
         id INT AUTO_INCREMENT PRIMARY KEY,
         userId INT NOT NULL,
         content TEXT NOT NULL,
+        media_url TEXT DEFAULT NULL,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         expiresAt DATETIME NOT NULL,
         likes INT DEFAULT 0,
@@ -56,8 +56,13 @@ async function initDb() {
     // Verificar si is_deleted existe, si no, añadirla
     const [postCols] = await connection.query('SHOW COLUMNS FROM posts LIKE "is_deleted"');
     if ((postCols as any[]).length === 0) {
-      console.log('Añadiendo columna is_deleted a posts...');
       await connection.query('ALTER TABLE posts ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0');
+    }
+
+
+    const [mediaUrlCols] = await connection.query('SHOW COLUMNS FROM posts LIKE "media_url"');
+    if ((mediaUrlCols as any[]).length === 0) {
+      await connection.query('ALTER TABLE posts ADD COLUMN media_url TEXT DEFAULT NULL AFTER content');
     }
 
     // Tabla de Likes
@@ -78,8 +83,7 @@ async function initDb() {
     await connection.end();
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error al inicializar la base de datos:');
-    console.error(error);
+    Sentry.captureException(error);
     process.exit(1);
   }
 }

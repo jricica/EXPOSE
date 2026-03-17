@@ -17,6 +17,7 @@ export interface PostCreateInput {
 	userId: UserId;
 	content: string;
 	ttl?: DurationInput;
+	mediaUrl?: string;
 }
 
 export interface PostListQuery {
@@ -38,6 +39,7 @@ export class PostService {
 		const id = await this.repository.create({
 			userId: input.userId,
 			content: input.content,
+			media_url: input.mediaUrl,
 			createdAt,
 			expiresAt,
 		});

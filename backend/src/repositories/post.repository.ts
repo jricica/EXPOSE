@@ -14,8 +14,8 @@ export class PostRepository {
 	): Promise<PostId> {
 		const isDeleted = data.is_deleted ?? false;
 		const result = await query<any>(
-			'INSERT INTO posts (userId, content, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?)',
-			[data.userId, data.content, data.createdAt, data.expiresAt, isDeleted]
+			'INSERT INTO posts (userId, content, media_url, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?, ?)',
+			[data.userId, data.content, data.media_url || null, data.createdAt, data.expiresAt, isDeleted]
 		);
 		return result.insertId;
 	}
