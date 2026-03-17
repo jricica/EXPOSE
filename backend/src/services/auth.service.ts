@@ -84,6 +84,17 @@ export class AuthService {
       }
     };
   }
+
+  async updateProfile(userId: number, data: { display_name?: string, bio?: string, avatar_url?: string }): Promise<void> {
+    await UserRepository.update(userId, data);
+  }
+
+  async getUserProfile(userId: number): Promise<Omit<User, 'passwordHash'>> {
+    const user = await UserRepository.findById(userId);
+    if (!user) throw new Error("Usuario no encontrado");
+    const { passwordHash: _, ...publicUser } = user;
+    return publicUser;
+  }
 }
 
 export const authService = new AuthService();
