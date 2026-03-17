@@ -13,9 +13,6 @@ const Register = ({ onBack }: RegisterProps) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,17 +27,7 @@ const Register = ({ onBack }: RegisterProps) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      setError("");
-      const response = await authService.register(username, email, password);
-      authLogin(response.token.accessToken);
-      window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message || "Error al registrarse. Intenta con otro correo o nombre de usuario.");
-    } finally {
-      setLoading(false);
-    }
+    setError("");
   };
 
   return (
@@ -90,9 +77,7 @@ const Register = ({ onBack }: RegisterProps) => {
 
           {error && <p style={{ color: "#ff4444", fontSize: "0.8rem", margin: "10px 0" }}>{error}</p>}
 
-          <button className="login-button" disabled={loading}>
-            {loading ? "Registering..." : "Register"}
-          </button>
+          <button className="login-button">Register</button>
         </form>
 
         <div className="login-footer">

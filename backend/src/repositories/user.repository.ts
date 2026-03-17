@@ -21,17 +21,33 @@ export class UserRepository {
 
     static async create(data: CreateUserInput): Promise<UserId> {
         const result = await query<any>(
-            "INSERT INTO users (username, email, passwordHash) VALUES (?, ?, ?)",
-            [data.username, data.email, data.passwordHash]
+            "INSERT INTO users (username, email, passwordHash, lastLogin) VALUES (?, ?, ?, ?)",
+            [data.username, data.email, data.passwordHash, data.lastLogin || null]
         );
         return result.insertId;
     }
 
     static async update(id: UserId, data: Partial<User>): Promise<void> {
+        const fields = [];
+        const values = [];
+
+        if (data.username) { fields.push("username = ?"); values.push(data.username); }
+        if (data.email) { fields.push("email = ?"); values.push(data.email); }
+        if (data.bio !== undefined) { fields.push("bio = ?"); values.push(data.bio); }
+        if (data.display_name !== undefined) { fields.push("display_name = ?"); values.push(data.display_name); }
+        if (data.avatar_url !== undefined) { fields.push("avatar_url = ?"); values.push(data.avatar_url); }
+
+        if (fields.length === 0) return;
+
+        values.push(id);
         await query(
-            "UPDATE users SET username = ?, email = ? WHERE id = ?",
-            [data.username, data.email, id]
+            `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+            values
         );
+    }
+
+    static async updateLastLogin(id: UserId, date: Date): Promise<void> {
+        await query("UPDATE users SET lastLogin = ? WHERE id = ?", [date, id]);
     }
 
     static async delete(id: UserId): Promise<void> {
@@ -55,6 +71,10 @@ export class UserRepository {
 
     async update(id: UserId, data: Partial<User>): Promise<void> {
         return UserRepository.update(id, data);
+    }
+
+    async updateLastLogin(id: UserId, date: Date): Promise<void> {
+        return UserRepository.updateLastLogin(id, date);
     }
 
     async delete(id: UserId): Promise<void> {

@@ -1,10 +1,20 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { setToken as setApiToken, setUnauthorizedHandler } from '../../../services/api';
 
+type AuthUser = {
+  id: number;
+  email?: string;
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
+};
+
 type AuthContextValue = {
   token: string | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (token: string, user: AuthUser) => void;
   logout: (redirect?: boolean) => void;
 };
 
@@ -30,11 +40,18 @@ type AuthProviderProps = {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedUser = localStorage.getItem('auth_user');
+
     setTokenState(storedToken);
     setApiToken(storedToken);
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
 
     setUnauthorizedHandler(() => {
       logout(false);
@@ -44,27 +61,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const login = (newToken: string) => {
-    setTokenState(newToken);
-    localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-    setApiToken(newToken);
-  };
+  const login = (newToken: string, userData: AuthUser) => {
+  setTokenState(newToken);
+  setUser(userData);
+  localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+  localStorage.setItem('auth_user', JSON.stringify(userData));
+  setApiToken(newToken);
+};
 
   const logout = (redirect = true) => {
-    setTokenState(null);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setApiToken(null);
-    if (redirect) {
-      redirectToLogin();
-    }
-  };
+  setTokenState(null);
+  setUser(null);
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem('auth_user');
+  setApiToken(null);
+
+  if (redirect) {
+    redirectToLogin();
+  }
+};
 
   const value: AuthContextValue = {
-    token,
-    isAuthenticated: Boolean(token),
-    login,
-    logout,
-  };
+  token,
+  user,
+  isAuthenticated: Boolean(token),
+  login,
+  logout,
+};
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

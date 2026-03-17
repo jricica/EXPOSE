@@ -65,6 +65,10 @@ export class AuthService {
       throw new Error("Credenciales inválidas");
     }
 
+    const now = new Date();
+    await UserRepository.updateLastLogin(user.id, now);
+    user.lastLogin = now;
+
     const accessToken = jwt.sign(
       { sub: user.id.toString(), email: user.email, username: user.username },
       JWT_SECRET,
@@ -79,6 +83,17 @@ export class AuthService {
         expiresIn: 7 * 24 * 60 * 60,
       }
     };
+  }
+
+  async updateProfile(userId: number, data: { display_name?: string, bio?: string, avatar_url?: string }): Promise<void> {
+    await UserRepository.update(userId, data);
+  }
+
+  async getUserProfile(userId: number): Promise<Omit<User, 'passwordHash'>> {
+    const user = await UserRepository.findById(userId);
+    if (!user) throw new Error("Usuario no encontrado");
+    const { passwordHash: _, ...publicUser } = user;
+    return publicUser;
   }
 }
 

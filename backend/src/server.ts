@@ -1,11 +1,14 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
+import uploadRoutes from './routes/upload.routes';
 
 import path from 'path';
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 // Serve static files from the frontend build
@@ -17,6 +20,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api', postRoutes);
 
 // Serve the frontend for any non-API routes (SPA support)
