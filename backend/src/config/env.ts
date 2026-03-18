@@ -25,3 +25,14 @@ export const REPORTS_THRESHOLD = (() => {
   return Number.isFinite(n) && n > 0 ? n : 5;
 })();
 
+export const EXPIRE_JOB_INTERVAL_MINUTES = (() => {
+  const raw = process.env.EXPIRE_JOB_INTERVAL_MINUTES;
+  const n = raw ? Number(raw) : 5;
+  return Number.isFinite(n) && n > 0 ? n : 5;
+})();
+
+export const EXPIRE_JOB_PHYSICAL_DELETE = (() => {
+  const raw = process.env.EXPIRE_JOB_PHYSICAL_DELETE;
+  return raw === '1' || raw === 'true';
+})();
+

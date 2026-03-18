@@ -155,6 +155,16 @@ export class PostRepository {
 		if (!rows || rows.length === 0) return null;
 		return Number(rows[0].reports_count || 0);
 	}
+
+	async markExpiredPosts(physicalDelete = false): Promise<number> {
+		if (physicalDelete) {
+			const res = await query<any>('DELETE FROM posts WHERE expiresAt <= NOW() AND is_deleted = 0');
+			return res.affectedRows ?? 0;
+		} else {
+			const res = await query<any>('UPDATE posts SET is_deleted = 1 WHERE expiresAt <= NOW() AND is_deleted = 0');
+			return res.affectedRows ?? 0;
+		}
+	}
 }
 
 export const postRepository = new PostRepository();
