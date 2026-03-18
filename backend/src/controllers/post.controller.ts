@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/node";
 
 export const createPost = async (req: Request, res: Response) => {
 	try {
-		const { content, ttl } = req.body;
+		const { content, ttl, mediaUrl } = req.body;
 		const userId = getUserId(req);
 
 		if (!content) {
@@ -16,6 +16,7 @@ export const createPost = async (req: Request, res: Response) => {
 			userId,
 			content,
 			ttl,
+			mediaUrl,
 		});
 
 		res.status(201).json(post);
@@ -27,13 +28,15 @@ export const createPost = async (req: Request, res: Response) => {
 
 export const listPosts = async (req: Request, res: Response) => {
 	try {
-		const { userId, includeExpired } = req.query;
+		const { userId, includeExpired, limit, page } = req.query;
 		const currentUserId = tryGetUserId(req);
 
 		const posts = await postService.listPosts({
 			userId: userId ? Number(userId) : undefined,
 			includeExpired: includeExpired === "true",
 			currentUserId,
+			limit: limit ? Number(limit) : undefined,
+			page: page ? Number(page) : undefined,
 		});
 
 		res.json(posts);

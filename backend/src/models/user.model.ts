@@ -13,6 +13,9 @@ export interface User {
     username: string;
     email: string;
     passwordHash: string;
+    bio?: string;
+    display_name?: string;
+    avatar_url?: string;
     role: number;
     friends: UserId[];
     createdAt: Date;

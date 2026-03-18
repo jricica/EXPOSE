@@ -4,6 +4,10 @@ import { setToken as setApiToken, setUnauthorizedHandler } from '../../../servic
 type AuthUser = {
   id: number;
   email?: string;
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
 };
 
 type AuthContextValue = {

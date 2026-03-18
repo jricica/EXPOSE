@@ -6,6 +6,8 @@ export interface PostRepositoryFindManyFilters {
 	userId?: UserId;
 	expiresAfter?: Date;
 	currentUserId?: UserId;
+	limit?: number;
+	offset?: number;
 }
 
 export class PostRepository {
@@ -14,8 +16,8 @@ export class PostRepository {
 	): Promise<PostId> {
 		const isDeleted = data.is_deleted ?? false;
 		const result = await query<any>(
-			'INSERT INTO posts (userId, content, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?)',
-			[data.userId, data.content, data.createdAt, data.expiresAt, isDeleted]
+			'INSERT INTO posts (userId, content, media_url, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?, ?)',
+			[data.userId, data.content, data.media_url || null, data.createdAt, data.expiresAt, isDeleted]
 		);
 		return result.insertId;
 	}
@@ -67,6 +69,16 @@ export class PostRepository {
 		}
 
 		sql += currentUserId ? ' ORDER BY p.createdAt DESC' : ' ORDER BY createdAt DESC';
+		
+		if (filters.limit !== undefined) {
+			sql += ' LIMIT ?';
+			params.push(filters.limit);
+			
+			if (filters.offset !== undefined) {
+				sql += ' OFFSET ?';
+				params.push(filters.offset);
+			}
+		}
 
 		const results = await query<any[]>(sql, params);
 
@@ -75,6 +87,24 @@ export class PostRepository {
 			likedByMe: currentUserId ? Boolean(post.likedByMe) : false,
 			is_deleted: Boolean(post.is_deleted),
 		})) as Post[];
+	}
+
+	async countMany(filters: Omit<PostRepositoryFindManyFilters, 'limit' | 'offset' | 'currentUserId'> = {}): Promise<number> {
+		let sql = 'SELECT COUNT(*) as total FROM posts WHERE is_deleted = 0';
+		const params: any[] = [];
+
+		if (filters.userId) {
+			sql += ' AND userId = ?';
+			params.push(filters.userId);
+		}
+
+		if (filters.expiresAfter) {
+			sql += ' AND expiresAt > ?';
+			params.push(filters.expiresAfter);
+		}
+
+		const result = await query<any[]>(sql, params);
+		return result[0].total;
 	}
 
 	async updateExpiresAt(id: PostId, expiresAt: Date): Promise<void> {

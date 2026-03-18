@@ -28,9 +28,21 @@ export class UserRepository {
     }
 
     static async update(id: UserId, data: Partial<User>): Promise<void> {
+        const fields = [];
+        const values = [];
+
+        if (data.username) { fields.push("username = ?"); values.push(data.username); }
+        if (data.email) { fields.push("email = ?"); values.push(data.email); }
+        if (data.bio !== undefined) { fields.push("bio = ?"); values.push(data.bio); }
+        if (data.display_name !== undefined) { fields.push("display_name = ?"); values.push(data.display_name); }
+        if (data.avatar_url !== undefined) { fields.push("avatar_url = ?"); values.push(data.avatar_url); }
+
+        if (fields.length === 0) return;
+
+        values.push(id);
         await query(
-            "UPDATE users SET username = ?, email = ? WHERE id = ?",
-            [data.username, data.email, id]
+            `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+            values
         );
     }
 

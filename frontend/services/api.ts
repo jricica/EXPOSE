@@ -20,7 +20,7 @@ export const setUnauthorizedHandler = (handler: (() => void) | null) => {
 };
 
 type RequestOptions = {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
 };
@@ -97,6 +97,9 @@ export const post = <T>(path: string, body?: unknown) =>
 
 export const put = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'PUT', body });
+
+export const patch = <T>(path: string, body?: unknown) =>
+  request<T>(path, { method: 'PATCH', body });
 
 export const del = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'DELETE', body });

@@ -6,6 +6,7 @@ export interface Post {
   id: PostId;
   userId: UserId;
   content: string;
+  media_url?: string;
   createdAt: Date;
   expiresAt: Date;
   likes: number;
