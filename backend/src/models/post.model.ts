@@ -10,6 +10,7 @@ export interface Post {
   createdAt: Date;
   expiresAt: Date;
   likes: number;
+  reportsCount?: number;
   likedByMe?: boolean;
   is_deleted?: boolean;
 }

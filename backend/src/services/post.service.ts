@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 import { postRepository, PostRepository } from '../repositories/post.repository';
+import { REPORTS_THRESHOLD } from '../config/env';
 import {
 	addDuration,
 	DurationInput,
@@ -115,6 +116,22 @@ export class PostService {
   		const post = await this.repository.findById(id);
   		if (!post) throw new Error("Post not found");
 		await this.repository.delete(id);
+	}
+
+	async reportPost(postId: PostId): Promise<{ reportsCount: number; hidden: boolean }> {
+		const post = await this.repository.findById(postId);
+		if (!post) throw new Error('Post not found');
+
+		const reports = await this.repository.incrementReports(postId);
+		if (reports === null) throw new Error('Post not found or already deleted');
+
+		let hidden = false;
+		if (reports >= REPORTS_THRESHOLD) {
+			await this.repository.delete(postId);
+			hidden = true;
+		}
+
+		return { reportsCount: reports, hidden };
 	}
 
 

@@ -81,3 +81,14 @@ export const deletePost = async (req: Request, res: Response) => {
     res.status(404).json({ message: "Post not found" });
   }
 };
+
+export const reportPost = async (req: Request, res: Response) => {
+	try {
+		const id = Number(req.params.id);
+		const result = await postService.reportPost(id);
+		res.json(result);
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(400).json({ message: 'Error reporting post' });
+	}
+};
