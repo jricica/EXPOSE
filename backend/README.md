@@ -56,3 +56,66 @@
   - No pre-read is required for the idempotent path; it attempts the target state directly.
   - Only one read (`findById`) is used to return the latest counter and validate post existence.
   - Legacy `POST /api/posts/:id/like` (toggle) is kept for compatibility, but `PUT` is recommended for retries and mobile/network instability.
+
+## Mensajes Directos (MVP)
+
+- Crear o recuperar conversacion directa:
+  - `POST /api/conversations/direct`
+  - Body: `{ "participantUserId": 42 }`
+  - Response `201`:
+    ```json
+    {
+      "conversationId": "10#42",
+      "type": "direct",
+      "participantIds": [10, 42],
+      "participants": [
+        { "userId": 10, "joinedAt": "2026-04-19T18:00:00.000Z" },
+        { "userId": 42, "joinedAt": "2026-04-19T18:00:00.000Z" }
+      ],
+      "createdAt": "2026-04-19T18:00:00.000Z",
+      "updatedAt": "2026-04-19T18:00:00.000Z"
+    }
+    ```
+
+- Enviar mensaje a una conversacion:
+  - `POST /api/conversations/:conversationId/messages`
+  - Body: `{ "content": "Hola" }`
+  - Response `201`:
+    ```json
+    {
+      "conversationId": "10#42",
+      "messageId": "1713559200000#f6a0f4f2-2f88-4f14-8f1e-7bda59f5f615",
+      "senderId": 10,
+      "receiverId": 42,
+      "content": "Hola",
+      "createdAt": "2026-04-19T18:01:00.000Z",
+      "readAt": null
+    }
+    ```
+
+- Listar historial con paginacion por cursor:
+  - `GET /api/conversations/:conversationId/messages?limit=30&cursorMessageId=...`
+  - Response `200`:
+    ```json
+    {
+      "messages": [
+        {
+          "conversationId": "10#42",
+          "messageId": "1713559200000#f6a0f4f2-2f88-4f14-8f1e-7bda59f5f615",
+          "senderId": 10,
+          "receiverId": 42,
+          "content": "Hola",
+          "createdAt": "2026-04-19T18:01:00.000Z",
+          "readAt": null
+        }
+      ],
+      "pagination": {
+        "limit": 30,
+        "nextCursorMessageId": "1713559100000#7f6bd0db-28d9-4c64-8ad6-2ed6db9ea1bd"
+      }
+    }
+    ```
+
+- Seguridad:
+  - Solo participantes de la conversacion pueden listar o enviar mensajes.
+  - `403` para accesos no autorizados.
