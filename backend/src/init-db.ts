@@ -65,6 +65,11 @@ async function initDb() {
       await connection.query('CREATE INDEX idx_posts_createdAt ON posts(createdAt)');
     }
 
+    const [createdAtIdIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_createdAt_id"');
+    if ((createdAtIdIdx as any[]).length === 0) {
+      await connection.query('CREATE INDEX idx_posts_createdAt_id ON posts(createdAt, id)');
+    }
+
     const [expiresAtIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_expiresAt"');
     if ((expiresAtIdx as any[]).length === 0) {
       await connection.query('CREATE INDEX idx_posts_expiresAt ON posts(expiresAt)');
