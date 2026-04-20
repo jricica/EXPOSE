@@ -17,6 +17,7 @@ model User {
   bio          String?    @db.Text
   display_name String?    @db.VarChar(100)
   avatar_url   String?    @db.Text
+  role         Int        @default(1)
   posts        Post[]
   post_likes   PostLike[]
 

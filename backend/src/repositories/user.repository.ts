@@ -17,6 +17,7 @@ const USER_SELECT = {
     bio: true,
     display_name: true,
     avatar_url: true,
+    role: true,
     createdAt: true,
     lastLogin: true,
 } satisfies Prisma.UserSelect;
@@ -41,7 +42,7 @@ const mapUser = (user: UserRecord): User => ({
     avatar_url: user.avatar_url ?? undefined,
     createdAt: user.createdAt,
     lastLogin: user.lastLogin,
-    role: 1,
+    role: user.role,
     friends: [],
 });
 
