@@ -174,7 +174,18 @@ describe('FeedEventRepository', () => {
         entityId: 'bad-date',
         createdAt: 'not-a-date',
       }),
-    ).rejects.toThrow('createdAt must be a valid ISO-8601 string');
+    ).rejects.toThrow('createdAt must be a strict ISO-8601 UTC string');
+
+    await expect(
+      repository.createEvent({
+        feedUserId: 2,
+        actorUserId: 2,
+        eventType: 'POST_CREATED',
+        entityType: 'POST',
+        entityId: 'offset-date',
+        createdAt: '2026-04-19T13:00:00+02:00',
+      }),
+    ).rejects.toThrow('createdAt must be a strict ISO-8601 UTC string');
   });
 
   it('uses cursor identity (pk+sk) to avoid ambiguity across partitions', async () => {
@@ -241,6 +252,119 @@ describe('FeedEventRepository', () => {
     const timeline = await repository.getTimeline(15);
     expect(identity(first)).toBe(identity(second));
     expect(timeline.items).toHaveLength(1);
+  });
+
+  it('validates eventType and entityType at runtime', async () => {
+    await expect(
+      repository.createEvent({
+        feedUserId: 21,
+        actorUserId: 4,
+        eventType: 'NOPE' as any,
+        entityType: 'POST',
+        entityId: 'x',
+      }),
+    ).rejects.toThrow('eventType must be one of');
+
+    await expect(
+      repository.createEvent({
+        feedUserId: 21,
+        actorUserId: 4,
+        eventType: 'POST_CREATED',
+        entityType: 'NOPE' as any,
+        entityId: 'x',
+      }),
+    ).rejects.toThrow('entityType must be one of');
+  });
+
+  it('validates eventId, ttl, and dedupeKey inputs', async () => {
+    await expect(
+      repository.createEvent({
+        feedUserId: 31,
+        actorUserId: 6,
+        eventType: 'POST_CREATED',
+        entityType: 'POST',
+        entityId: 'x',
+        eventId: '   ',
+      }),
+    ).rejects.toThrow('eventId cannot be empty when provided');
+
+    await expect(
+      repository.createEvent({
+        feedUserId: 31,
+        actorUserId: 6,
+        eventType: 'POST_CREATED',
+        entityType: 'POST',
+        entityId: 'x',
+        eventId: 'bad event id',
+      }),
+    ).rejects.toThrow('eventId contains invalid characters');
+
+    await expect(
+      repository.createEvent({
+        feedUserId: 31,
+        actorUserId: 6,
+        eventType: 'POST_CREATED',
+        entityType: 'POST',
+        entityId: 'x',
+        ttl: 0,
+      }),
+    ).rejects.toThrow('ttl must be a positive integer when provided');
+
+    await expect(
+      repository.createEvent({
+        feedUserId: 31,
+        actorUserId: 6,
+        eventType: 'POST_CREATED',
+        entityType: 'POST',
+        entityId: 'x',
+        dedupeKey: '   ',
+      }),
+    ).rejects.toThrow('dedupeKey cannot be empty when provided');
+  });
+
+  it('handles missing cursor item gracefully when dataset changes between pages', async () => {
+    await repository.createEvent({
+      feedUserId: 40,
+      actorUserId: 1,
+      eventType: 'POST_CREATED',
+      entityType: 'POST',
+      entityId: 'a',
+      createdAt: '2026-04-19T10:00:00.000Z',
+      visibility: 'PUBLIC',
+    });
+
+    await repository.createEvent({
+      feedUserId: 40,
+      actorUserId: 1,
+      eventType: 'POST_CREATED',
+      entityType: 'POST',
+      entityId: 'b',
+      createdAt: '2026-04-19T10:01:00.000Z',
+      visibility: 'FOLLOWERS',
+    });
+
+    await repository.createEvent({
+      feedUserId: 40,
+      actorUserId: 1,
+      eventType: 'POST_CREATED',
+      entityType: 'POST',
+      entityId: 'c',
+      createdAt: '2026-04-19T10:02:00.000Z',
+      visibility: 'PUBLIC',
+    });
+
+    const firstPage = await repository.getTimeline(40, { limit: 2 });
+    expect(firstPage.nextCursor).not.toBeNull();
+
+    const filteredPage = await repository.getTimeline(40, {
+      limit: 2,
+      cursor: firstPage.nextCursor!,
+      visibility: ['PUBLIC'],
+    });
+
+    expect(filteredPage.items).toHaveLength(1);
+    expect(filteredPage.items[0].entityId).toBe('a');
+    expect(filteredPage.nextCursor).toBeNull();
   });
 });
 

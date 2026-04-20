@@ -62,11 +62,19 @@ const userKey = (userId: number) => `${DYNAMO_PREFIXES.user}#${userId}`;
 
 const timestampKey = (value: string) => value.replace(/[:.]/g, '-');
 
-export const relationshipKey = (sourceUserId: number, targetUserId: number) => ({
+export const relationshipKey = (
+  sourceUserId: number,
+  targetUserId: number,
+  relationshipType?: RelationshipType,
+) => ({
 	pk: userKey(sourceUserId),
-	sk: `${DYNAMO_PREFIXES.relationship}#${targetUserId}`,
+	sk: relationshipType
+		? `${DYNAMO_PREFIXES.relationship}#${relationshipType}#${targetUserId}`
+		: `${DYNAMO_PREFIXES.relationship}#${targetUserId}`,
 	gsi1pk: userKey(targetUserId),
-	gsi1sk: `${DYNAMO_PREFIXES.user}#${sourceUserId}`,
+	gsi1sk: relationshipType
+		? `${DYNAMO_PREFIXES.user}#${sourceUserId}#${relationshipType}`
+		: `${DYNAMO_PREFIXES.user}#${sourceUserId}`,
 });
 
 export const feedKey = (feedUserId: number, actorUserId: number, createdAt: string, eventId: string) => ({
@@ -82,7 +90,7 @@ export const feedEntityKey = (entityType: FeedEntityType, entityId: string) => (
 
 export const buildRelationshipItem = (item: Omit<SocialRelationshipItem, 'pk' | 'sk' | 'gsi1pk' | 'gsi1sk'>) => ({
 	...item,
-	...relationshipKey(item.sourceUserId, item.targetUserId),
+	...relationshipKey(item.sourceUserId, item.targetUserId, item.relationshipType),
 });
 
 export const buildFeedEventItem = (
