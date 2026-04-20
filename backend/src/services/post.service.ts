@@ -211,13 +211,12 @@ export class PostService {
 		});
 	}
 
-	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+	async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
 		const post = await this.repository.findById(postId, userId);
 		if (!post) throw new Error('Post no encontrado');
 
 		const desiredLikeState = !Boolean(post.likedByMe);
-		const state = await this.repository.setLike(postId, userId, desiredLikeState);
-		return state.likes;
+		return this.repository.setLike(postId, userId, desiredLikeState);
 	}
 
 	async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<PostLikeState> {

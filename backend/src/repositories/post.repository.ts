@@ -476,10 +476,9 @@ export class PostRepository {
     );
   }
 
-  async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+  async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
     const currentlyLiked = await this.userLiked(postId, userId);
-    const state = await this.setLike(postId, userId, !currentlyLiked);
-    return state.likes;
+    return this.setLike(postId, userId, !currentlyLiked);
   }
 
   async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<PostLikeState> {
