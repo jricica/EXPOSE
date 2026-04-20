@@ -1,8 +1,22 @@
 import { Router } from 'express';
-import { listMessages, sendMessage } from '../controllers/message.controller';
+import {
+	createDirectConversation,
+	listConversationMessages,
+	listConversations,
+	listMessages,
+	markConversationRead,
+	sendConversationMessage,
+	sendMessage,
+} from '../controllers/message.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
+
+router.post('/conversations/direct', authMiddleware, createDirectConversation);
+router.get('/conversations', authMiddleware, listConversations);
+router.get('/conversations/:conversationId/messages', authMiddleware, listConversationMessages);
+router.post('/conversations/:conversationId/messages', authMiddleware, sendConversationMessage);
+router.post('/conversations/:conversationId/read', authMiddleware, markConversationRead);
 
 router.post('/messages', authMiddleware, sendMessage);
 router.get('/messages', authMiddleware, listMessages);
