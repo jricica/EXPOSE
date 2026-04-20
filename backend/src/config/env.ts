@@ -31,3 +31,4 @@ export const COMMENT_REPORTS_THRESHOLD = (() => {
   return Number.isFinite(n) && n > 0 ? n : 3;
 })();
 
+export const CDN_BASE_URL = process.env.CDN_BASE_URL || null;
