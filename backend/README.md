@@ -37,6 +37,16 @@
 - All dependencies are listed in `package.json`.
 - `node_modules/`, build outputs, and environment files are ignored by git (see `.gitignore`).
 
+## DB Schema Transition (Legacy -> Prisma Migrate)
+
+- **Fuente principal del esquema**: `prisma/migrations/*` + `prisma/schema.prisma`.
+- **Deploy/start**: `npm start` ejecuta primero `prisma migrate deploy` (script `prestart`).
+- **Bootstrap local/transicional**: `npm run db:init`
+  - crea la base (`CREATE DATABASE IF NOT EXISTS`)
+  - si detecta esquema legacy sin historial Prisma, marca baseline de `20260420000000_init`
+  - aplica migraciones versionadas con `prisma migrate deploy`
+- **Datos de prueba**: `npm run db:seed` (se mantiene fuera de migraciones).
+
 ## DynamoDB Like Strategy
 
 - Data model:

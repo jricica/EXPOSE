@@ -4,6 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "prestart": "npm run prisma:migrate:deploy",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",
@@ -13,13 +14,14 @@
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy"
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:baseline": "prisma migrate resolve --applied 20260420000000_init"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1010.0",
     "@aws-sdk/client-s3": "^3.1010.0",
-    "@prisma/client": "^6.17.1",
     "@aws-sdk/lib-dynamodb": "^3.1010.0",
+    "@prisma/client": "^6.19.3",
     "@sentry/node": "^10.37.0",
     "@types/multer": "^2.1.0",
     "@types/uuid": "^10.0.0",
@@ -48,7 +50,7 @@
     "babel-jest": "^30.2.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
-    "prisma": "^6.17.1",
+    "prisma": "^6.19.3",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
