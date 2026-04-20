@@ -29,6 +29,7 @@ export const ddbDocClient = DynamoDBDocumentClient.from(dynamoClient, {
 
 export const TABLES = {
   FEED: process.env.DYNAMO_FEED_TABLE || 'FeedItems',
+  FEED_TIMELINE: process.env.DYNAMO_FEED_TIMELINE_TABLE || 'FeedTimeline',
   RELATIONSHIPS: process.env.DYNAMO_REL_TABLE || 'UserRelationships',
   POST_LIKES: process.env.DYNAMO_POST_LIKES_TABLE || 'PostLikes',
   POST_COMMENTS: process.env.DYNAMO_POST_COMMENTS_TABLE || 'PostComments',

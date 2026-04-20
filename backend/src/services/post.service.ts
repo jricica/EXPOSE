@@ -2,6 +2,8 @@ import * as Sentry from '@sentry/node';
 import { Comment, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 import { postRepository, PostRepository } from '../repositories/post.repository';
+import { feedTimelineRepository, FeedTimelineRepository } from '../repositories/feed-timeline.repository';
+import { relationshipRepository, RelationshipRepository } from '../repositories/relationship.repository';
 import { REPORTS_THRESHOLD } from '../config/env';
 import {
 	addDuration,
@@ -59,6 +61,8 @@ interface FeedAuthorProfile {
 export class PostService {
 	constructor(
 		private readonly repository: PostRepository = postRepository,
+		private readonly timelineRepository: FeedTimelineRepository = feedTimelineRepository,
+		private readonly relationships: RelationshipRepository = relationshipRepository,
 		private readonly clock: () => Date = now
 	) { }
 
@@ -76,6 +80,10 @@ export class PostService {
 
 		const post = await this.repository.findById(id);
 		if (!post) throw new Error('Error al recuperar el post creado');
+
+		await this.publishPostToTimelines(post);
+		await this.repository.markFanOutReady(post.id);
+
 		return post;
 	}
 
@@ -92,7 +100,7 @@ export class PostService {
 			cursorPostId: query.cursorPostId,
 		};
 
-		const posts = await this.repository.findMany(filters);
+		const posts = await this.loadFeedPosts(filters);
 		const enrichedPosts = await this.enrichPostsWithDomainMetadata(posts);
 
 		let nextCursor: { cursorCreatedAt: string; cursorPostId: PostId } | null = null;
@@ -116,6 +124,49 @@ export class PostService {
 				nextCursor,
 			},
 		};
+	}
+
+	private async loadFeedPosts(filters: {
+		userId?: UserId;
+		expiresAfter?: Date;
+		currentUserId?: UserId;
+		limit: number;
+		cursorCreatedAt?: Date;
+		cursorPostId?: PostId;
+	}): Promise<Post[]> {
+		if (filters.userId || !filters.currentUserId) {
+			return this.repository.findMany(filters);
+		}
+
+		const timelinePostIds = await this.timelineRepository.listPostIds({
+			feedUserId: filters.currentUserId,
+			limit: filters.limit,
+			cursorCreatedAt: filters.cursorCreatedAt,
+			cursorPostId: filters.cursorPostId,
+		});
+
+		const posts = await this.repository.findByIds(timelinePostIds, filters.currentUserId);
+
+		if (!filters.expiresAfter) {
+			return posts;
+		}
+
+		const expiresAfterMs = filters.expiresAfter.getTime();
+		return posts.filter((post) => post.expiresAt.getTime() > expiresAfterMs);
+	}
+
+	private async publishPostToTimelines(post: Post): Promise<void> {
+		const followers = await this.relationships.listFollowers(post.userId);
+		const followerIds = followers
+			.filter((relationship) => relationship.relationshipType === 'follow')
+			.map((relationship) => relationship.userId);
+
+		await this.timelineRepository.fanOutPostCreated({
+			postId: post.id,
+			actorUserId: post.userId,
+			feedUserIds: [post.userId, ...followerIds],
+			createdAt: post.createdAt,
+		});
 	}
 
 	private async enrichPostsWithDomainMetadata(posts: Post[]): Promise<FeedPost[]> {
