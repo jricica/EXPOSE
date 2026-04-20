@@ -36,7 +36,7 @@ export class UserService {
   async registerAuthUser(input: { username: string; email: string; password: string }): Promise<User> {
     const username = validateUsername(input.username);
     const email = validateEmail(input.email);
-    validatePassword(input.password);
+    validatePassword(input.password, { email, username });
 
     const existing = await this.repo.findByEmail(email);
     if (existing) {
@@ -78,6 +78,9 @@ export class UserService {
   async registerUserAsync(input: any): Promise<any> {
     const username = validateUsername(input.name || input.username);
     const email = validateEmail(input.email);
+    if (typeof input.password === 'string') {
+      validatePassword(input.password, { email, username });
+    }
 
     return {
       id: input.id || 100,

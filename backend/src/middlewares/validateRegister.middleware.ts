@@ -1,6 +1,29 @@
 import { NextFunction, Request, Response } from "express";
 
-const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const MIN_PASSWORD_LENGTH = 10;
+const MAX_PASSWORD_LENGTH = 72; // bcrypt only uses the first 72 bytes
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+const WEAK_PASSWORDS = new Set([
+  "12345678",
+  "123456789",
+  "1234567890",
+  "password",
+  "password123",
+  "qwerty123",
+  "qwertyuiop",
+  "abc12345",
+  "letmein",
+  "admin123",
+  "welcome123",
+  "iloveyou",
+]);
+
+interface PasswordValidationContext {
+  email?: unknown;
+  username?: unknown;
+}
+
+const normalizeComparable = (value: string): string => value.trim().toLowerCase();
 
 export function validateEmail(email: unknown): string {
   if (typeof email !== "string") {
@@ -26,15 +49,55 @@ export function validateEmail(email: unknown): string {
   return normalized;
 }
 
-export function validatePassword(password: unknown): string {
+export function validatePassword(
+  password: unknown,
+  context: PasswordValidationContext = {}
+): string {
   if (typeof password !== "string") {
     throw new Error("Password is required and must be a string");
   }
 
-  if (!PASSWORD_REGEX.test(password)) {
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
     throw new Error(
-      "Password must be at least 8 characters and include an uppercase letter, a number, and a symbol"
+      `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters`
     );
+  }
+
+  if (!PASSWORD_COMPLEXITY_REGEX.test(password)) {
+    throw new Error(
+      "Password must include at least one uppercase letter, one lowercase letter, one number, and one symbol"
+    );
+  }
+
+  const normalizedPassword = normalizeComparable(password);
+  const alphanumericPassword = normalizedPassword.replace(/[^a-z0-9]/g, "");
+
+  if (
+    WEAK_PASSWORDS.has(normalizedPassword) ||
+    (alphanumericPassword.length > 0 && WEAK_PASSWORDS.has(alphanumericPassword))
+  ) {
+    throw new Error("Password is too common or weak");
+  }
+
+  if (typeof context.email === "string") {
+    const normalizedEmail = normalizeComparable(context.email);
+    const emailLocalPart = normalizedEmail.split("@")[0] ?? "";
+    if (
+      normalizedPassword === normalizedEmail ||
+      (emailLocalPart.length >= 4 && normalizedPassword.includes(emailLocalPart))
+    ) {
+      throw new Error("Password cannot be based on your email");
+    }
+  }
+
+  if (typeof context.username === "string") {
+    const normalizedUsername = normalizeComparable(context.username);
+    if (
+      normalizedPassword === normalizedUsername ||
+      (normalizedUsername.length >= 4 && normalizedPassword.includes(normalizedUsername))
+    ) {
+      throw new Error("Password cannot be based on your username");
+    }
   }
 
   return password;
@@ -46,8 +109,12 @@ export const validateRegister = (
   next: NextFunction
 ) => {
   try {
-    req.body.email = validateEmail(req.body?.email);
-    req.body.password = validatePassword(req.body?.password);
+    const email = validateEmail(req.body?.email);
+    req.body.email = email;
+    req.body.password = validatePassword(req.body?.password, {
+      email,
+      username: req.body?.username,
+    });
     return next();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid registration data";
