@@ -77,6 +77,44 @@ export const toggleLike = async (req: Request, res: Response) => {
 	}
 };
 
+export const addComment = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		const userId = getUserId(req);
+		const { content } = req.body;
+
+		const comment = await postService.addComment(postId, userId, content);
+		res.status(201).json(comment);
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(400).json({ message: err instanceof Error ? err.message : "Error al crear comentario." });
+	}
+};
+
+export const listComments = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		const comments = await postService.listComments(postId);
+		res.json(comments);
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(500).json({ message: "Error al listar comentarios." });
+	}
+};
+
+export const sharePost = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		const userId = getUserId(req);
+
+		const shares = await postService.sharePost(postId, userId);
+		res.json({ shares });
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(400).json({ message: err instanceof Error ? err.message : "Error al compartir post." });
+	}
+};
+
 export const getPost = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);

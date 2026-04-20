@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import { Post, PostId } from '../models/post.model';
+import { Comment, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 import { postRepository, PostRepository } from '../repositories/post.repository';
 import { REPORTS_THRESHOLD } from '../config/env';
@@ -8,7 +8,6 @@ import {
 	DurationInput,
 	durationIsPositive,
 	ensureFutureDate,
-	hasExpired,
 	now,
 } from '../utils/date';
 
@@ -107,6 +106,23 @@ export class PostService {
 		if (!post) throw new Error('Post no encontrado');
 
 		return await this.repository.toggleLike(postId, userId);
+	}
+
+	async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
+		if (!content?.trim()) throw new Error('El comentario no puede estar vacío');
+		const post = await this.repository.findById(postId);
+		if (!post) throw new Error('Post no encontrado');
+		return this.repository.addComment(postId, userId, content.trim());
+	}
+
+	async listComments(postId: PostId): Promise<Comment[]> {
+		return this.repository.listComments(postId);
+	}
+
+	async sharePost(postId: PostId, userId: UserId): Promise<number> {
+		const post = await this.repository.findById(postId);
+		if (!post) throw new Error('Post no encontrado');
+		return this.repository.share(postId, userId);
 	}
 
 	async getPostById(id: PostId, currentUserId?: UserId): Promise<Post> {

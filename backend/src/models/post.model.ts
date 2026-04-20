@@ -10,6 +10,8 @@ export interface Post {
   createdAt: Date;
   expiresAt: Date;
   likes: number;
+  commentCount?: number;
+  shareCount?: number;
   reportsCount?: number;
   likedByMe?: boolean;
   is_deleted?: boolean;
@@ -20,6 +22,21 @@ export interface Post {
 
 export interface LikeRecord {
   id: number;
+  postId: PostId;
+  userId: UserId;
+  createdAt: Date;
+}
+
+export interface Comment {
+  commentId: string;
+  postId: PostId;
+  userId: UserId;
+  content: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface ShareRecord {
   postId: PostId;
   userId: UserId;
   createdAt: Date;
