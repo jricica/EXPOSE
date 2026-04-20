@@ -1,50 +1,66 @@
 import supertest from 'supertest';
 import app from '../src/server';
-import { UserRepository } from '../src/repositories/user.repository';
+import { UserRepository, userRepository } from '../src/repositories/user.repository';
+
+jest.mock('../src/config/env', () => ({
+  JWT_SECRET: 'test-jwt-secret',
+  JWT_ALGORITHM: 'HS256',
+  JWT_CLOCK_TOLERANCE_SECONDS: 5,
+  REPORTS_THRESHOLD: 5,
+  COMMENT_REPORTS_THRESHOLD: 3,
+}));
 
 jest.mock('../src/repositories/user.repository');
 
-describe('UserRegister', () => {
-    it('should return a successful register object', async () => {
-        (UserRepository.findByEmail as jest.Mock).mockResolvedValue(null);
-        (UserRepository.create as jest.Mock).mockResolvedValue(100);
-        (UserRepository.findById as jest.Mock).mockResolvedValue({
-            id: 100,
-            username: "testname",
-            email: "testname@gmail.com",
-            passwordHash: "hashed",
-            role: 1,
-            friends: [],
-            createdAt: new Date()
-        });
+describe('User auth flow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-        const response = await supertest(app).post('/api/auth/register').send({
-            "email": "testname@gmail.com",
-            "password": "passwordlargo",
-            "username": "testname"
-        })
+  it('returns token on register and allows immediate /auth/me bootstrap', async () => {
+    const createdUser = {
+      id: 100,
+      username: 'testname',
+      email: 'testname@ufm.edu',
+      passwordHash: 'hashed',
+      role: 1,
+      friends: [],
+      createdAt: new Date(),
+      lastLogin: null,
+    };
 
-        expect(response.status).toBe(201);
-        expect(response.body).toBeDefined();
-        expect(response.body).toHaveProperty("email");
-        expect(response.body.email).toBe(
-            "testname@gmail.com"
-        );
+    (userRepository.findByEmail as jest.Mock).mockResolvedValue(null);
+    (userRepository.create as jest.Mock).mockResolvedValue(100);
+    (userRepository.findById as jest.Mock).mockResolvedValue(createdUser);
+    (UserRepository.findById as jest.Mock).mockResolvedValue(createdUser);
+
+    const registerResponse = await supertest(app).post('/api/auth/register').send({
+      email: 'testname@ufm.edu',
+      password: 'Password1!',
+      username: 'testname',
     });
-});
 
-describe('PasswordValidation', () => {
-    it('should return an error for invalid password', async () => {
+    expect(registerResponse.status).toBe(201);
+    expect(registerResponse.body.user.email).toBe('testname@ufm.edu');
+    expect(registerResponse.body.token.accessToken).toEqual(expect.any(String));
+    expect(registerResponse.body.authentication_token).toBe(registerResponse.body.token.accessToken);
 
-        const response = await supertest(app).post('/api/auth/register').send({
-            "email": "testname@gmail.com",
-            "password": "test", // < 8 chars
-            "username": "testname"
-        })
+    const meResponse = await supertest(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${registerResponse.body.authentication_token}`);
 
-        expect(response.status).toBe(400);
-        expect(response.body).toBeDefined();
-        expect(response.body.Code).toBe(1000);
-        expect(response.body.Message).toBe("User entered an invalid password.");
-    });
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body).toHaveProperty('user');
+    expect(meResponse.body.user.id).toBe(100);
+    expect(meResponse.body.user.email).toBe('testname@ufm.edu');
+    expect(meResponse.body.user.passwordHash).toBeUndefined();
+  });
+
+  it('returns auth error when token is missing', async () => {
+    const response = await supertest(app).get('/api/auth/me');
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('unauthorized');
+    expect(response.body.message).toBe('Token required');
+  });
 });
