@@ -25,3 +25,9 @@ export const REPORTS_THRESHOLD = (() => {
   return Number.isFinite(n) && n > 0 ? n : 5;
 })();
 
+export const COMMENT_REPORTS_THRESHOLD = (() => {
+  const raw = process.env.COMMENT_REPORTS_THRESHOLD;
+  const n = raw ? Number(raw) : 3;
+  return Number.isFinite(n) && n > 0 ? n : 3;
+})();
+

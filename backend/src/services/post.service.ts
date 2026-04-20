@@ -1,10 +1,10 @@
 import * as Sentry from '@sentry/node';
-import { Comment, Post, PostId } from '../models/post.model';
+import { Comment, CommentListQuery, PaginatedComments, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 import { postRepository, PostLikeState, PostRepository } from '../repositories/post.repository';
 import { feedTimelineRepository, FeedTimelineRepository } from '../repositories/feed-timeline.repository';
 import { relationshipRepository, RelationshipRepository } from '../repositories/relationship.repository';
-import { REPORTS_THRESHOLD } from '../config/env';
+import { COMMENT_REPORTS_THRESHOLD, REPORTS_THRESHOLD } from '../config/env';
 import {
 	addDuration,
 	DurationInput,
@@ -14,6 +14,8 @@ import {
 } from '../utils/date';
 
 const DEFAULT_POST_TTL_HOURS = 24;
+const COMMENT_MAX_LENGTH = 500;
+const COMMENT_MIN_LENGTH = 1;
 
 export interface PostCreateInput {
 	userId: UserId;
@@ -224,14 +226,43 @@ export class PostService {
 	}
 
 	async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
-		if (!content?.trim()) throw new Error('El comentario no puede estar vacío');
+		const sanitizedContent = content?.trim() ?? '';
+		if (sanitizedContent.length < COMMENT_MIN_LENGTH) {
+			throw new Error('El comentario no puede estar vacío');
+		}
+
+		if (sanitizedContent.length > COMMENT_MAX_LENGTH) {
+			throw new Error(`El comentario no puede superar ${COMMENT_MAX_LENGTH} caracteres`);
+		}
+
 		const post = await this.repository.findById(postId);
 		if (!post) throw new Error('Post no encontrado');
-		return this.repository.addComment(postId, userId, content.trim());
+		return this.repository.addComment(postId, userId, sanitizedContent);
 	}
 
-	async listComments(postId: PostId): Promise<Comment[]> {
-		return this.repository.listComments(postId);
+	async listComments(postId: PostId, query: Partial<CommentListQuery> = {}): Promise<PaginatedComments> {
+		const limit = Math.min(Math.max(Number(query.limit ?? 20), 1), 50);
+		const cursorCommentId = query.cursorCommentId;
+
+		return this.repository.listComments(postId, {
+			limit,
+			cursorCommentId,
+		});
+	}
+
+	async reportComment(postId: PostId, commentId: string): Promise<{ reportsCount: number; hidden: boolean }> {
+		const post = await this.repository.findById(postId);
+		if (!post) throw new Error('Post no encontrado');
+
+		const comment = await this.repository.reportComment(postId, commentId, COMMENT_REPORTS_THRESHOLD);
+		if (!comment) {
+			throw new Error('Comentario no encontrado');
+		}
+
+		return {
+			reportsCount: comment.reportsCount,
+			hidden: comment.moderationStatus === 'hidden',
+		};
 	}
 
 	async sharePost(postId: PostId, userId: UserId): Promise<number> {
