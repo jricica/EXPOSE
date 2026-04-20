@@ -4,11 +4,14 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "prestart": "npm run db:migrate:deploy",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",
     "db:init": "ts-node src/init-db.ts",
     "db:seed": "ts-node src/seed.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:baseline": "prisma migrate resolve --applied 20260419221500_init",
     "test": "jest"
   },
   "dependencies": {
@@ -24,6 +27,7 @@
     "multer": "^2.1.1",
     "mysql-promise": "^5.0.0",
     "mysql2": "^3.16.3",
+    "prisma": "^6.17.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
