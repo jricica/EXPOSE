@@ -1,105 +1,191 @@
-import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
+import prisma from './lib/prisma';
 
 dotenv.config();
 
+const SEED_PASSWORD = 'QaSeedPass123!';
+const SALT_ROUNDS = 10;
+
+const SEED_USERS = [
+  {
+    username: 'qa_alice',
+    email: 'qa.alice@ufm.edu',
+    display_name: 'QA Alice',
+    bio: 'Seed user for QA integration flows',
+    avatar_url: null as string | null,
+  },
+  {
+    username: 'qa_bob',
+    email: 'qa.bob@ufm.edu',
+    display_name: 'QA Bob',
+    bio: 'Seed user for auth and profile tests',
+    avatar_url: null as string | null,
+  },
+  {
+    username: 'qa_carla',
+    email: 'qa.carla@ufm.edu',
+    display_name: 'QA Carla',
+    bio: 'Seed user for feed and interaction tests',
+    avatar_url: null as string | null,
+  },
+] as const;
+
+const SEED_POSTS = [
+  {
+    authorEmail: 'qa.alice@ufm.edu',
+    content: '[seed:qa] post-1 welcome',
+    createdAt: new Date('2026-01-01T10:00:00.000Z'),
+  },
+  {
+    authorEmail: 'qa.bob@ufm.edu',
+    content: '[seed:qa] post-2 release-check',
+    createdAt: new Date('2026-01-02T10:00:00.000Z'),
+  },
+  {
+    authorEmail: 'qa.carla@ufm.edu',
+    content: '[seed:qa] post-3 regression-check',
+    createdAt: new Date('2026-01-03T10:00:00.000Z'),
+  },
+] as const;
+
+const SEED_LIKES = [
+  { postContent: '[seed:qa] post-1 welcome', userEmail: 'qa.bob@ufm.edu' },
+  { postContent: '[seed:qa] post-1 welcome', userEmail: 'qa.carla@ufm.edu' },
+  { postContent: '[seed:qa] post-2 release-check', userEmail: 'qa.alice@ufm.edu' },
+] as const;
+
+const PRODUCTION_GUARD_ENVS = new Set([
+  process.env.NODE_ENV,
+  process.env.APP_ENV,
+  process.env.ENVIRONMENT,
+].map((value) => (value || '').toLowerCase()));
+
+const isProductionLike = PRODUCTION_GUARD_ENVS.has('production');
+
 async function seed() {
-    const connectionConfig = {
-        host: process.env.DB_HOST || '127.0.0.1',
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'expose',
-        port: parseInt(process.env.DB_PORT || '3306', 10),
-    };
+  if (isProductionLike) {
+    throw new Error('Seed deshabilitado en producción. Ejecuta solo en entornos no productivos.');
+  }
 
-    try {
-        console.log(' Iniciando seeding de datos...');
-        const connection = await mysql.createConnection(connectionConfig);
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, SALT_ROUNDS);
 
-    
-        const saltRounds = 10;
-        const passwordHash = await bcrypt.hash('password123', saltRounds);
+  const usersByEmail = new Map<string, { id: number; email: string }>();
 
-        console.log(' Insertando 10 usuarios...');
-        const userIds: number[] = [];
-        const names = ['Adrian', 'Beatriz', 'Carlos', 'Diana', 'Eduardo', 'Fernanda', 'Gabriel', 'Helena', 'Ivan', 'Julia'];
+  for (const user of SEED_USERS) {
+    const upserted = await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        username: user.username,
+        passwordHash,
+        bio: user.bio,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+      },
+      create: {
+        username: user.username,
+        email: user.email,
+        passwordHash,
+        bio: user.bio,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
 
-        for (let i = 0; i < names.length; i++) {
-            const username = names[i].toLowerCase();
-            const email = `${username}@example.com`;
+    usersByEmail.set(upserted.email, upserted);
+  }
 
-            const [existing] = await connection.query('SELECT id FROM users WHERE email = ?', [email]);
-            if ((existing as any[]).length > 0) {
-                userIds.push((existing as any[])[0].id);
-                console.log(`Usuario ${email} ya existe, saltando...`);
-                continue;
-            }
+  const expiresAt = new Date('2099-12-31T23:59:59.000Z');
+  const postsByContent = new Map<string, { id: number; content: string }>();
 
-            const [result] = await connection.query(
-                'INSERT INTO users (username, email, passwordHash, lastLogin) VALUES (?, ?, ?, ?)',
-                [username, email, passwordHash, null]
-            );
-            userIds.push((result as any).insertId);
-            console.log(`Usuario ${email} creado.`);
-        }
-
-        console.log(' Insertando 20 posts...');
-        const now = new Date();
-        const contents = [
-            "¡Hola a todos! Este es mi primer post en EXPOSE. 🚀",
-            "Increíble día para programar algo genial.",
-            "¿Alguien sabe cuál es la mejor configuración para MySQL? 🤔",
-            "Trabajando en el proyecto final, ¡se ve increíble!",
-            "Me encanta la interfaz de esta aplicación. Muy premium.",
-            "Compartiendo un poco de mi día. ¡Ánimo!",
-            "¿Cuáles son sus metas para este mes? Las mías son terminar el backend.",
-            "A veces lo más simple es lo más elegante.",
-            "Probando el sistema de posts de 24 horas. ¡Es genial!",
-            "Café y código, el mejor combo matutino. ☕️⌨️",
-            "¿Qué piensan de la inteligencia artificial? Me vuela la cabeza.",
-            "¡Fin de semana! Tiempo de descansar (y quizás un poco de side projects).",
-            "Aprendiendo TypeScript, ¡es un cambio de juego!",
-            "Recuerden hidratarse mientras programan. 💧",
-            "Mañana será un gran día para lanzar nuevos feature.",
-            "Un pequeño paso para el dev, un gran salto para el deploy.",
-            "¡Esta comunidad es genial! Gracias por el apoyo.",
-            "Tip del día: Usa const sobre let siempre que sea posible.",
-            "Escuchando música lo-fi para entrar en la zona.",
-            "¡Listo para lo que venga! #devlife"
-        ];
-
-        const [columns] = await connection.query('SHOW COLUMNS FROM posts LIKE "is_deleted"');
-        const hasIsDeleted = (columns as any[]).length > 0;
-
-        for (let i = 0; i < contents.length; i++) {
-            const userId = userIds[i % userIds.length];
-            const content = contents[i];
-            const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + 24);
-
-            if (hasIsDeleted) {
-                await connection.query(
-                    'INSERT INTO posts (userId, content, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?)',
-                    [userId, content, now, expiresAt, 0]
-                );
-            } else {
-                await connection.query(
-                    'INSERT INTO posts (userId, content, createdAt, expiresAt) VALUES (?, ?, ?, ?)',
-                    [userId, content, now, expiresAt]
-                );
-            }
-        }
-
-        console.log('✅ Seeding completado con éxito!');
-        await connection.end();
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Error durante el seeding:');
-        console.error(error);
-        process.exit(1);
+  for (const post of SEED_POSTS) {
+    const author = usersByEmail.get(post.authorEmail);
+    if (!author) {
+      throw new Error(`Usuario seed no encontrado para post: ${post.authorEmail}`);
     }
+
+    const existing = await prisma.post.findFirst({
+      where: {
+        userId: author.id,
+        content: post.content,
+      },
+      select: { id: true },
+    });
+
+    const savedPost = existing
+      ? await prisma.post.update({
+          where: { id: existing.id },
+          data: {
+            media_url: null,
+            createdAt: post.createdAt,
+            expiresAt,
+            is_deleted: false,
+          },
+          select: { id: true, content: true },
+        })
+      : await prisma.post.create({
+          data: {
+            userId: author.id,
+            content: post.content,
+            media_url: null,
+            createdAt: post.createdAt,
+            expiresAt,
+            is_deleted: false,
+          },
+          select: { id: true, content: true },
+        });
+
+    postsByContent.set(savedPost.content, savedPost);
+  }
+
+  for (const like of SEED_LIKES) {
+    const post = postsByContent.get(like.postContent);
+    const user = usersByEmail.get(like.userEmail);
+
+    if (!post || !user) {
+      throw new Error(`Relación de like inválida en seed: ${JSON.stringify(like)}`);
+    }
+
+    await prisma.postLike.upsert({
+      where: {
+        postId_userId: {
+          postId: post.id,
+          userId: user.id,
+        },
+      },
+      update: {},
+      create: {
+        postId: post.id,
+        userId: user.id,
+      },
+    });
+  }
+
+  for (const post of postsByContent.values()) {
+    const likes = await prisma.postLike.count({
+      where: { postId: post.id },
+    });
+
+    await prisma.post.update({
+      where: { id: post.id },
+      data: { likes },
+    });
+  }
+
+  console.log('✅ Seed idempotente aplicado para entorno no productivo.');
+  console.log(`Usuarios seed: ${SEED_USERS.map((user) => user.email).join(', ')}`);
+  console.log(`Password seed de prueba: ${SEED_PASSWORD}`);
 }
 
-seed();
-
+seed()
+  .catch((error) => {
+    console.error('❌ Error durante el seeding:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
