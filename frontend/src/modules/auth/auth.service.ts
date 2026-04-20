@@ -7,12 +7,6 @@ export const authService = {
     },
 
     async register(username: string, email: string, password: string): Promise<AuthResponse> {
-
-        const user = await post<any>("/auth/register", { username, email, password });
-
-        if (!user.token) {
-            return await this.login(email, password);
-        }
-        return user;
+        return await post<AuthResponse>("/auth/register", { username, email, password });
     }
 };

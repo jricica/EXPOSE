@@ -14,4 +14,5 @@ export interface AuthResponse {
         accessToken: string;
         expiresIn: number;
     };
+    authentication_token: string;
 }

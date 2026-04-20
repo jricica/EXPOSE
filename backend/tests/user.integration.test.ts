@@ -1,50 +1,118 @@
 import supertest from 'supertest';
 import app from '../src/server';
-import { UserRepository } from '../src/repositories/user.repository';
+import { UserRepository, userRepository } from '../src/repositories/user.repository';
+
+jest.mock('../src/config/env', () => ({
+  JWT_SECRET: 'test-jwt-secret',
+  JWT_ALGORITHM: 'HS256',
+  JWT_CLOCK_TOLERANCE_SECONDS: 5,
+  REPORTS_THRESHOLD: 5,
+  COMMENT_REPORTS_THRESHOLD: 3,
+}));
 
 jest.mock('../src/repositories/user.repository');
 
 describe('UserRegister', () => {
-    it('should return a successful register object', async () => {
-        (UserRepository.findByEmail as jest.Mock).mockResolvedValue(null);
-        (UserRepository.create as jest.Mock).mockResolvedValue(100);
-        (UserRepository.findById as jest.Mock).mockResolvedValue({
-            id: 100,
-            username: "testname",
-            email: "testname@gmail.com",
-            passwordHash: "hashed",
-            role: 1,
-            friends: [],
-            createdAt: new Date()
-        });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-        const response = await supertest(app).post('/api/auth/register').send({
-            "email": "testname@gmail.com",
-            "password": "passwordlargo",
-            "username": "testname"
-        })
+  it('should return token on register and allow immediate authenticated /me request', async () => {
+    const createdUser = {
+      id: 100,
+      username: 'testname',
+      email: 'testname@ufm.edu',
+      passwordHash: 'hashed',
+      role: 1,
+      friends: [],
+      createdAt: new Date(),
+      lastLogin: null,
+    };
 
-        expect(response.status).toBe(201);
-        expect(response.body).toBeDefined();
-        expect(response.body).toHaveProperty("email");
-        expect(response.body.email).toBe(
-            "testname@gmail.com"
-        );
+    (userRepository.findByEmail as jest.Mock).mockResolvedValue(null);
+    (userRepository.create as jest.Mock).mockResolvedValue(100);
+    (userRepository.findById as jest.Mock).mockResolvedValue(createdUser);
+    (UserRepository.findById as jest.Mock).mockResolvedValue(createdUser);
+
+    const registerResponse = await supertest(app).post('/api/auth/register').send({
+      email: 'testname@ufm.edu',
+      password: 'Password1!',
+      username: 'testname',
     });
+
+    expect(registerResponse.status).toBe(201);
+    expect(registerResponse.body).toBeDefined();
+    expect(registerResponse.body.user.email).toBe('testname@ufm.edu');
+    expect(registerResponse.body.token.accessToken).toEqual(expect.any(String));
+    expect(registerResponse.body.token.expiresIn).toBeGreaterThan(0);
+    expect(registerResponse.body.authentication_token).toBe(registerResponse.body.token.accessToken);
+
+    const meResponse = await supertest(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${registerResponse.body.authentication_token}`);
+
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.userId).toBe(100);
+    expect(meResponse.body.email).toBe('testname@ufm.edu');
+    expect(meResponse.body.username).toBe('testname');
+  });
+
+  it('should return a uniform error for duplicate email', async () => {
+    (userRepository.findByEmail as jest.Mock).mockResolvedValue({
+      id: 1,
+      username: 'existing',
+      email: 'existing@ufm.edu',
+      passwordHash: 'hash',
+      role: 1,
+      friends: [],
+      createdAt: new Date(),
+      lastLogin: null,
+    });
+
+    const response = await supertest(app).post('/api/auth/register').send({
+      email: 'existing@ufm.edu',
+      password: 'Password1!',
+      username: 'newuser',
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: 'email_conflict',
+      message: 'El email ya está registrado',
+      field: 'email',
+    });
+  });
 });
 
 describe('PasswordValidation', () => {
-    it('should return an error for invalid password', async () => {
-
-        const response = await supertest(app).post('/api/auth/register').send({
-            "email": "testname@gmail.com",
-            "password": "test", // < 8 chars
-            "username": "testname"
-        })
-
-        expect(response.status).toBe(400);
-        expect(response.body).toBeDefined();
-        expect(response.body.Code).toBe(1000);
-        expect(response.body.Message).toBe("User entered an invalid password.");
+  it('should return a uniform error for invalid password', async () => {
+    const response = await supertest(app).post('/api/auth/register').send({
+      email: 'testname@ufm.edu',
+      password: 'test',
+      username: 'testname',
     });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toBeDefined();
+    expect(response.body.error).toBe('validation_error');
+    expect(response.body.field).toBe('password');
+    expect(response.body.message).toContain('Password must be at least 8 characters');
+  });
+});
+
+describe('LoginValidation', () => {
+  it('should return a uniform error for invalid credentials', async () => {
+    (userRepository.findByEmail as jest.Mock).mockResolvedValue(null);
+
+    const response = await supertest(app).post('/api/auth/login').send({
+      email: 'missing@ufm.edu',
+      password: 'Password1!',
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      error: 'invalid_credentials',
+      message: 'Credenciales inválidas',
+    });
+  });
 });
