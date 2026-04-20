@@ -43,6 +43,11 @@ export class UserService {
       throw new Error("El email ya está registrado");
     }
 
+    const existingUsername = await this.repo.findByUsername(username);
+    if (existingUsername) {
+      throw new Error("El username ya está registrado");
+    }
+
     const passwordHash = await bcrypt.hash(input.password, 10);
     const userId = await this.repo.create({
       username,

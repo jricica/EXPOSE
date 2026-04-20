@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { User, UserId, CreateUserInput } from "../models/user.model";
 import prisma from "../lib/prisma";
 
@@ -8,20 +9,111 @@ export interface PublicUserProfile {
     avatar_url?: string;
 }
 
+const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+const normalizeUsername = (username: string): string => username.trim();
+
+const mapUser = (user: {
+    id: number;
+    username: string;
+    email: string;
+    passwordHash: string;
+    bio: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+    createdAt: Date;
+    lastLogin: Date | null;
+}): User => ({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    passwordHash: user.passwordHash,
+    bio: user.bio ?? undefined,
+    display_name: user.display_name ?? undefined,
+    avatar_url: user.avatar_url ?? undefined,
+    createdAt: user.createdAt,
+    lastLogin: user.lastLogin,
+    role: 1,
+    friends: [],
+});
+
+const mapPublicUser = (user: {
+    id: number;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+}): PublicUserProfile => ({
+    id: user.id,
+    username: user.username,
+    display_name: user.display_name ?? undefined,
+    avatar_url: user.avatar_url ?? undefined,
+});
+
+const toRepositoryError = (error: unknown, operation: string): Error => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+            const rawTarget = (error.meta as { target?: string | string[] } | undefined)?.target;
+            const targets = Array.isArray(rawTarget)
+                ? rawTarget
+                : typeof rawTarget === 'string'
+                    ? [rawTarget]
+                    : [];
+            const targetText = targets.join(',').toLowerCase();
+
+            if (targetText.includes('email')) {
+                return new Error('El email ya está registrado');
+            }
+            if (targetText.includes('username')) {
+                return new Error('El username ya está registrado');
+            }
+            return new Error('Registro de usuario duplicado');
+        }
+
+        if (error.code === 'P2025') {
+            return new Error('User not found');
+        }
+    }
+
+    return new Error(`Database error in users.${operation}`);
+};
+
+const runWithRepositoryErrorHandling = async <T>(
+    operation: string,
+    action: () => Promise<T>,
+): Promise<T> => {
+    try {
+        return await action();
+    } catch (error) {
+        throw toRepositoryError(error, operation);
+    }
+};
+
 export class UserRepository {
 
     static async findById(id: UserId): Promise<User | null> {
-        const user = await prisma.user.findUnique({
-            where: { id }
+        return runWithRepositoryErrorHandling('findById', async () => {
+            const user = await prisma.user.findUnique({
+                where: { id }
+            });
+            return user ? mapUser(user) : null;
         });
-        return user as User | null;
     }
 
     static async findByEmail(email: string): Promise<User | null> {
-        const user = await prisma.user.findUnique({
-            where: { email }
+        return runWithRepositoryErrorHandling('findByEmail', async () => {
+            const user = await prisma.user.findUnique({
+                where: { email: normalizeEmail(email) }
+            });
+            return user ? mapUser(user) : null;
         });
-        return user as User | null;
+    }
+
+    static async findByUsername(username: string): Promise<User | null> {
+        return runWithRepositoryErrorHandling('findByUsername', async () => {
+            const user = await prisma.user.findUnique({
+                where: { username: normalizeUsername(username) }
+            });
+            return user ? mapUser(user) : null;
+        });
     }
 
     static async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
@@ -30,41 +122,45 @@ export class UserRepository {
             return [];
         }
 
-        const users = await prisma.user.findMany({
-            where: {
-                id: {
-                    in: uniqueIds,
+        return runWithRepositoryErrorHandling('findPublicByIds', async () => {
+            const users = await prisma.user.findMany({
+                where: {
+                    id: {
+                        in: uniqueIds,
+                    },
                 },
-            },
-            select: {
-                id: true,
-                username: true,
-                display_name: true,
-                avatar_url: true,
-            },
-        });
+                select: {
+                    id: true,
+                    username: true,
+                    display_name: true,
+                    avatar_url: true,
+                },
+            });
 
-        return users as PublicUserProfile[];
+            return users.map(mapPublicUser);
+        });
     }
 
     static async create(data: CreateUserInput): Promise<UserId> {
-        const created = await prisma.user.create({
-            data: {
-                username: data.username,
-                email: data.email,
-                passwordHash: data.passwordHash,
-                lastLogin: data.lastLogin ?? null
-            },
-            select: { id: true }
+        return runWithRepositoryErrorHandling('create', async () => {
+            const created = await prisma.user.create({
+                data: {
+                    username: normalizeUsername(data.username),
+                    email: normalizeEmail(data.email),
+                    passwordHash: data.passwordHash,
+                    lastLogin: data.lastLogin ?? null
+                },
+                select: { id: true }
+            });
+            return created.id;
         });
-        return created.id;
     }
 
     static async update(id: UserId, data: Partial<User>): Promise<void> {
-        const payload: Record<string, unknown> = {};
+        const payload: Prisma.UserUpdateInput = {};
 
-        if (data.username) payload.username = data.username;
-        if (data.email) payload.email = data.email;
+        if (data.username) payload.username = normalizeUsername(data.username);
+        if (data.email) payload.email = normalizeEmail(data.email);
         if (data.bio !== undefined) payload.bio = data.bio;
         if (data.display_name !== undefined) payload.display_name = data.display_name;
         if (data.avatar_url !== undefined) payload.avatar_url = data.avatar_url;
@@ -73,22 +169,28 @@ export class UserRepository {
             return;
         }
 
-        await prisma.user.update({
-            where: { id },
-            data: payload
+        await runWithRepositoryErrorHandling('update', async () => {
+            await prisma.user.update({
+                where: { id },
+                data: payload
+            });
         });
     }
 
     static async updateLastLogin(id: UserId, date: Date): Promise<void> {
-        await prisma.user.update({
-            where: { id },
-            data: { lastLogin: date }
+        await runWithRepositoryErrorHandling('updateLastLogin', async () => {
+            await prisma.user.update({
+                where: { id },
+                data: { lastLogin: date }
+            });
         });
     }
 
     static async delete(id: UserId): Promise<void> {
-        await prisma.user.delete({
-            where: { id }
+        await runWithRepositoryErrorHandling('delete', async () => {
+            await prisma.user.delete({
+                where: { id }
+            });
         });
     }
 
@@ -101,6 +203,10 @@ export class UserRepository {
 
     async findByEmail(email: string): Promise<User | null> {
         return UserRepository.findByEmail(email);
+    }
+
+    async findByUsername(username: string): Promise<User | null> {
+        return UserRepository.findByUsername(username);
     }
 
     async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
