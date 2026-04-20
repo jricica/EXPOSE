@@ -9,15 +9,16 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { ddbDocClient, INDEXES, TABLES } from '../config/dynamo';
-import { Comment, Post, PostId, ShareRecord } from '../models/post.model';
+import { Comment, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 
 export interface PostRepositoryFindManyFilters {
   userId?: UserId;
   expiresAfter?: Date;
   currentUserId?: UserId;
-  limit?: number;
-  offset?: number;
+  limit: number;
+  cursorCreatedAt?: Date;
+  cursorPostId?: PostId;
 }
 
 const generatePostId = (): PostId => Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
@@ -35,9 +36,19 @@ const mapItemToPost = (item: any, likedByMe = false): Post => ({
   likes: item.likes ?? 0,
   commentCount: item.commentCount ?? 0,
   shareCount: item.shareCount ?? 0,
+  reportsCount: item.reportsCount ?? 0,
   likedByMe,
-  is_deleted: false,
+  is_deleted: Boolean(item.is_deleted),
 });
+
+const comparePostsDesc = (a: any, b: any) => {
+  const byCreatedAt = String(b.createdAt).localeCompare(String(a.createdAt));
+  if (byCreatedAt !== 0) {
+    return byCreatedAt;
+  }
+
+  return Number(b.postId) - Number(a.postId);
+};
 
 export class PostRepository {
   async create(
@@ -58,6 +69,7 @@ export class PostRepository {
           likes: 0,
           commentCount: 0,
           shareCount: 0,
+          reportsCount: 0,
           is_deleted: data.is_deleted ?? false,
         },
         ConditionExpression: 'attribute_not_exists(postId)',
@@ -75,33 +87,36 @@ export class PostRepository {
       })
     );
 
-    if (!result.Item || result.Item.is_deleted) return null;
+    if (!result.Item || result.Item.is_deleted) {
+      return null;
+    }
 
     const likedByMe = currentUserId ? await this.userLiked(id, currentUserId) : false;
     return mapItemToPost(result.Item, likedByMe);
   }
 
   private async userLiked(postId: PostId, userId: UserId): Promise<boolean> {
-    const res = await ddbDocClient.send(
+    const result = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.POST_LIKES,
         Key: { postId, userId },
       })
     );
-    return Boolean(res.Item);
+
+    return Boolean(result.Item);
   }
 
-  async findMany(filters: PostRepositoryFindManyFilters = {}): Promise<Post[]> {
+  async findMany(filters: PostRepositoryFindManyFilters): Promise<Post[]> {
     const items: any[] = [];
-    const expressions: string[] = ['is_deleted <> :true OR attribute_not_exists(is_deleted)'];
-    const exprValues: Record<string, any> = { ':true': true };
+    const expressions: string[] = ['(is_deleted <> :true OR attribute_not_exists(is_deleted))'];
+    const expressionValues: Record<string, any> = { ':true': true };
 
     if (filters.expiresAfter) {
       expressions.push('expiresAt > :exp');
-      exprValues[':exp'] = filters.expiresAfter.toISOString();
+      expressionValues[':exp'] = filters.expiresAfter.toISOString();
     }
 
-    const filterExpression = expressions.length ? expressions.join(' AND ') : undefined;
+    const filterExpression = expressions.join(' AND ');
 
     if (filters.userId) {
       const queryInput = {
@@ -110,68 +125,112 @@ export class PostRepository {
         KeyConditionExpression: 'userId = :uid',
         ExpressionAttributeValues: {
           ':uid': filters.userId,
-          ...exprValues,
+          ...expressionValues,
         },
         FilterExpression: filterExpression,
       };
 
       try {
-        await this.collectAll(new QueryCommand(queryInput), items);
-      } catch (err) {
-        // Fallback a scan si el índice no existe
-        const scanInput = {
-          TableName: TABLES.FEED,
-          FilterExpression: filterExpression
-            ? `${filterExpression} AND userId = :uid`
-            : 'userId = :uid',
-          ExpressionAttributeValues: { ...exprValues, ':uid': filters.userId },
-        };
-        await this.collectAll(new ScanCommand(scanInput), items);
+        await this.collectAllQueries(queryInput, items);
+      } catch {
+        await this.collectAllScans(
+          {
+            TableName: TABLES.FEED,
+            FilterExpression: `${filterExpression} AND userId = :uid`,
+            ExpressionAttributeValues: {
+              ...expressionValues,
+              ':uid': filters.userId,
+            },
+          },
+          items,
+        );
       }
     } else {
-      const scanInput = {
-        TableName: TABLES.FEED,
-        FilterExpression: filterExpression,
-        ExpressionAttributeValues: Object.keys(exprValues).length ? exprValues : undefined,
-      };
-      await this.collectAll(new ScanCommand(scanInput), items);
+      await this.collectAllScans(
+        {
+          TableName: TABLES.FEED,
+          FilterExpression: filterExpression,
+          ExpressionAttributeValues: expressionValues,
+        },
+        items,
+      );
     }
 
-    items.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+    let visible = items.sort(comparePostsDesc);
 
-    const offset = filters.offset ?? 0;
-    const limit = filters.limit ?? items.length;
-    const sliced = items.slice(offset, offset + limit);
+    if (filters.cursorCreatedAt && filters.cursorPostId !== undefined) {
+      const cursorDateIso = filters.cursorCreatedAt.toISOString();
+      visible = visible.filter((item) => {
+        if (item.createdAt < cursorDateIso) {
+          return true;
+        }
+
+        if (item.createdAt > cursorDateIso) {
+          return false;
+        }
+
+        return Number(item.postId) < Number(filters.cursorPostId);
+      });
+    }
+
+    const sliced = visible.slice(0, filters.limit);
 
     const likedMap =
-      filters.currentUserId && sliced.length
+      filters.currentUserId && sliced.length > 0
         ? await this.getLikedMap(
-            sliced.map((p) => p.postId),
-            filters.currentUserId
+            sliced.map((item) => Number(item.postId)),
+            filters.currentUserId,
           )
         : {};
 
     return sliced.map((item) => mapItemToPost(item, likedMap[item.postId] ?? false));
   }
 
-  private async collectAll(command: QueryCommand | ScanCommand, buffer: any[]) {
+  private async collectAllQueries(input: any, buffer: any[]) {
     let lastKey: Record<string, any> | undefined;
+
     do {
-      const res = await ddbDocClient.send(
-        command instanceof QueryCommand
-          ? new QueryCommand({ ...(command as any).input, ExclusiveStartKey: lastKey })
-          : new ScanCommand({ ...(command as any).input, ExclusiveStartKey: lastKey })
+      const result = await ddbDocClient.send(
+        new QueryCommand({
+          ...input,
+          ExclusiveStartKey: lastKey,
+        })
       );
-      if (res.Items) buffer.push(...res.Items);
-      lastKey = res.LastEvaluatedKey as any;
+
+      if (result.Items) {
+        buffer.push(...result.Items);
+      }
+
+      lastKey = result.LastEvaluatedKey as any;
+    } while (lastKey);
+  }
+
+  private async collectAllScans(input: any, buffer: any[]) {
+    let lastKey: Record<string, any> | undefined;
+
+    do {
+      const result = await ddbDocClient.send(
+        new ScanCommand({
+          ...input,
+          ExclusiveStartKey: lastKey,
+        })
+      );
+
+      if (result.Items) {
+        buffer.push(...result.Items);
+      }
+
+      lastKey = result.LastEvaluatedKey as any;
     } while (lastKey);
   }
 
   private async getLikedMap(postIds: PostId[], userId: UserId): Promise<Record<PostId, boolean>> {
-    if (!postIds.length) return {};
+    if (postIds.length === 0) {
+      return {};
+    }
 
     const keys = postIds.map((postId) => ({ postId, userId }));
-    const res = await ddbDocClient.send(
+    const response = await ddbDocClient.send(
       new BatchGetCommand({
         RequestItems: {
           [TABLES.POST_LIKES]: {
@@ -181,78 +240,88 @@ export class PostRepository {
       })
     );
 
-    const map: Record<PostId, boolean> = {};
-    const received = res.Responses?.[TABLES.POST_LIKES] ?? [];
-    for (const item of received) {
-      map[item.postId] = true;
+    const result: Record<PostId, boolean> = {};
+    const likedItems = response.Responses?.[TABLES.POST_LIKES] ?? [];
+
+    for (const item of likedItems) {
+      result[Number(item.postId)] = true;
     }
-    return map;
+
+    return result;
   }
 
-  async countMany(
-    filters: Omit<PostRepositoryFindManyFilters, 'limit' | 'offset' | 'currentUserId'> = {}
-  ): Promise<number> {
+  async countMany(filters: Pick<PostRepositoryFindManyFilters, 'userId' | 'expiresAfter'> = {}): Promise<number> {
     let count = 0;
-    const expressions: string[] = ['is_deleted <> :true OR attribute_not_exists(is_deleted)'];
-    const exprValues: Record<string, any> = { ':true': true };
+    const expressions: string[] = ['(is_deleted <> :true OR attribute_not_exists(is_deleted))'];
+    const expressionValues: Record<string, any> = { ':true': true };
+
     if (filters.expiresAfter) {
       expressions.push('expiresAt > :exp');
-      exprValues[':exp'] = filters.expiresAfter.toISOString();
+      expressionValues[':exp'] = filters.expiresAfter.toISOString();
     }
+
     const filterExpression = expressions.join(' AND ');
 
     if (filters.userId) {
       try {
         let lastKey: Record<string, any> | undefined;
         do {
-          const res = await ddbDocClient.send(
+          const result = await ddbDocClient.send(
             new QueryCommand({
               TableName: TABLES.FEED,
               IndexName: INDEXES.FEED_USER_CREATED_AT,
               KeyConditionExpression: 'userId = :uid',
-              ExpressionAttributeValues: { ':uid': filters.userId, ...exprValues },
               FilterExpression: filterExpression,
+              ExpressionAttributeValues: {
+                ':uid': filters.userId,
+                ...expressionValues,
+              },
               Select: 'COUNT',
               ExclusiveStartKey: lastKey,
             })
           );
-          count += res.Count ?? 0;
-          lastKey = res.LastEvaluatedKey as any;
+
+          count += result.Count ?? 0;
+          lastKey = result.LastEvaluatedKey as any;
         } while (lastKey);
       } catch {
-        let scanKey: Record<string, any> | undefined;
+        let lastKey: Record<string, any> | undefined;
         do {
-          const res = await ddbDocClient.send(
+          const result = await ddbDocClient.send(
             new ScanCommand({
               TableName: TABLES.FEED,
-              FilterExpression: filterExpression
-                ? `${filterExpression} AND userId = :uid`
-                : 'userId = :uid',
-              ExpressionAttributeValues: { ...exprValues, ':uid': filters.userId },
+              FilterExpression: `${filterExpression} AND userId = :uid`,
+              ExpressionAttributeValues: {
+                ...expressionValues,
+                ':uid': filters.userId,
+              },
               Select: 'COUNT',
-              ExclusiveStartKey: scanKey,
+              ExclusiveStartKey: lastKey,
             })
           );
-          count += res.Count ?? 0;
-          scanKey = res.LastEvaluatedKey as any;
-        } while (scanKey);
+
+          count += result.Count ?? 0;
+          lastKey = result.LastEvaluatedKey as any;
+        } while (lastKey);
       }
     } else {
       let lastKey: Record<string, any> | undefined;
       do {
-        const res = await ddbDocClient.send(
+        const result = await ddbDocClient.send(
           new ScanCommand({
             TableName: TABLES.FEED,
             FilterExpression: filterExpression,
-            ExpressionAttributeValues: exprValues,
+            ExpressionAttributeValues: expressionValues,
             Select: 'COUNT',
             ExclusiveStartKey: lastKey,
           })
         );
-        count += res.Count ?? 0;
-        lastKey = res.LastEvaluatedKey as any;
+
+        count += result.Count ?? 0;
+        lastKey = result.LastEvaluatedKey as any;
       } while (lastKey);
     }
+
     return count;
   }
 
@@ -262,7 +331,9 @@ export class PostRepository {
         TableName: TABLES.FEED,
         Key: { postId: id },
         UpdateExpression: 'SET expiresAt = :exp',
-        ExpressionAttributeValues: { ':exp': expiresAt.toISOString() },
+        ExpressionAttributeValues: {
+          ':exp': expiresAt.toISOString(),
+        },
         ConditionExpression: 'attribute_exists(postId)',
       })
     );
@@ -281,17 +352,21 @@ export class PostRepository {
   }
 
   private async updateLikeCount(postId: PostId, delta: number): Promise<number> {
-    const res = await ddbDocClient.send(
+    const result = await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.FEED,
         Key: { postId },
         UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :delta',
         ExpressionAttributeNames: { '#likes': 'likes' },
-        ExpressionAttributeValues: { ':delta': delta, ':zero': 0 },
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':delta': delta,
+        },
         ReturnValues: 'UPDATED_NEW',
       })
     );
-    const likes = Number(res.Attributes?.likes ?? 0);
+
+    const likes = Number(result.Attributes?.likes ?? 0);
     if (likes < 0) {
       await ddbDocClient.send(
         new UpdateCommand({
@@ -304,6 +379,7 @@ export class PostRepository {
       );
       return 0;
     }
+
     return likes;
   }
 
@@ -322,7 +398,8 @@ export class PostRepository {
           Key: { postId, userId },
         })
       );
-      return await this.updateLikeCount(postId, -1);
+
+      return this.updateLikeCount(postId, -1);
     }
 
     await ddbDocClient.send(
@@ -337,7 +414,7 @@ export class PostRepository {
       })
     );
 
-    return await this.updateLikeCount(postId, 1);
+    return this.updateLikeCount(postId, 1);
   }
 
   async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
@@ -364,7 +441,10 @@ export class PostRepository {
         TableName: TABLES.FEED,
         Key: { postId },
         UpdateExpression: 'SET commentCount = if_not_exists(commentCount, :zero) + :one',
-        ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':one': 1,
+        },
       })
     );
 
@@ -380,20 +460,26 @@ export class PostRepository {
 
   async listComments(postId: PostId): Promise<Comment[]> {
     const items: any[] = [];
-    let lastKey: any;
+    let lastKey: Record<string, any> | undefined;
 
     do {
-      const res = await ddbDocClient.send(
+      const result = await ddbDocClient.send(
         new QueryCommand({
           TableName: TABLES.POST_COMMENTS,
           KeyConditionExpression: 'postId = :pid',
-          ExpressionAttributeValues: { ':pid': postId },
-          ExclusiveStartKey: lastKey,
+          ExpressionAttributeValues: {
+            ':pid': postId,
+          },
           ScanIndexForward: true,
+          ExclusiveStartKey: lastKey,
         })
       );
-      if (res.Items) items.push(...res.Items);
-      lastKey = res.LastEvaluatedKey;
+
+      if (result.Items) {
+        items.push(...result.Items);
+      }
+
+      lastKey = result.LastEvaluatedKey as any;
     } while (lastKey);
 
     return items.map((item) => ({
@@ -419,25 +505,31 @@ export class PostRepository {
         TableName: TABLES.FEED,
         Key: { postId },
         UpdateExpression: 'SET commentCount = if_not_exists(commentCount, :zero) - :one',
-        ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':one': 1,
+        },
       })
     );
   }
 
   async share(postId: PostId, userId: UserId): Promise<number> {
-    const now = new Date().toISOString();
-    const exists = await ddbDocClient.send(
+    const existing = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.POST_SHARES,
         Key: { postId, userId },
       })
     );
 
-    if (!exists.Item) {
+    if (!existing.Item) {
       await ddbDocClient.send(
         new PutCommand({
           TableName: TABLES.POST_SHARES,
-          Item: { postId, userId, createdAt: now },
+          Item: {
+            postId,
+            userId,
+            createdAt: new Date().toISOString(),
+          },
           ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
         })
       );
@@ -447,13 +539,38 @@ export class PostRepository {
           TableName: TABLES.FEED,
           Key: { postId },
           UpdateExpression: 'SET shareCount = if_not_exists(shareCount, :zero) + :one',
-          ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+          ExpressionAttributeValues: {
+            ':zero': 0,
+            ':one': 1,
+          },
         })
       );
     }
 
     const post = await this.findById(postId);
     return post?.shareCount ?? 0;
+  }
+
+  async incrementReports(postId: PostId): Promise<number | null> {
+    const result = await ddbDocClient.send(
+      new UpdateCommand({
+        TableName: TABLES.FEED,
+        Key: { postId },
+        UpdateExpression: 'SET reportsCount = if_not_exists(reportsCount, :zero) + :one',
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':one': 1,
+        },
+        ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+        ReturnValues: 'UPDATED_NEW',
+      })
+    ).catch(() => null);
+
+    if (!result) {
+      return null;
+    }
+
+    return Number(result.Attributes?.reportsCount ?? 0);
   }
 }
 

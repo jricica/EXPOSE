@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { Comment, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 import { postRepository, PostRepository } from '../repositories/post.repository';
+import { REPORTS_THRESHOLD } from '../config/env';
 import {
 	addDuration,
 	DurationInput,
@@ -24,17 +25,18 @@ export interface PostListQuery {
 	includeExpired?: boolean;
 	currentUserId?: UserId;
 	limit?: number;
-	page?: number;
+	cursorCreatedAt?: Date;
+	cursorPostId?: PostId;
 }
 
 export interface PaginatedPosts {
 	posts: Post[];
 	pagination: {
-		total: number;
 		limit: number;
-		page: number;
-		pages: number;
-		hasNext: boolean;
+		nextCursor: {
+			cursorCreatedAt: string;
+			cursorPostId: PostId;
+		} | null;
 	};
 }
 
@@ -62,36 +64,39 @@ export class PostService {
 	}
 
 	async listPosts(query: PostListQuery): Promise<PaginatedPosts> {
-		const limit = query.limit || 20;
-		const page = query.page || 1;
-		const offset = (page - 1) * limit;
+		const limit = Math.min(Math.max(query.limit || 20, 1), 50);
+		const limitPlusOne = limit + 1;
 
 		const filters = {
 			userId: query.userId,
 			expiresAfter: query.includeExpired ? undefined : this.clock(),
 			currentUserId: query.currentUserId,
-			limit,
-			offset,
+			limit: limitPlusOne,
+			cursorCreatedAt: query.cursorCreatedAt,
+			cursorPostId: query.cursorPostId,
 		};
 
-		const [posts, total] = await Promise.all([
-			this.repository.findMany(filters),
-			this.repository.countMany({
-				userId: filters.userId,
-				expiresAfter: filters.expiresAfter,
-			}),
-		]);
+		const posts = await this.repository.findMany(filters);
 
-		const pages = Math.ceil(total / limit);
+		let nextCursor: { cursorCreatedAt: string; cursorPostId: PostId } | null = null;
+
+		if (posts.length > limit) {
+			const last = posts.pop();
+			if (last) {
+				nextCursor = {
+					cursorCreatedAt: last.createdAt instanceof Date
+						? last.createdAt.toISOString()
+						: String(last.createdAt),
+					cursorPostId: last.id,
+				};
+			}
+		}
 
 		return {
 			posts,
 			pagination: {
-				total,
 				limit,
-				page,
-				pages,
-				hasNext: page < pages,
+				nextCursor,
 			},
 		};
 	}
@@ -131,6 +136,22 @@ export class PostService {
   		const post = await this.repository.findById(id);
   		if (!post) throw new Error("Post not found");
 		await this.repository.delete(id);
+	}
+
+	async reportPost(postId: PostId): Promise<{ reportsCount: number; hidden: boolean }> {
+		const post = await this.repository.findById(postId);
+		if (!post) throw new Error('Post not found');
+
+		const reports = await this.repository.incrementReports(postId);
+		if (reports === null) throw new Error('Post not found or already deleted');
+
+		let hidden = false;
+		if (reports >= REPORTS_THRESHOLD) {
+			await this.repository.delete(postId);
+			hidden = true;
+		}
+
+		return { reportsCount: reports, hidden };
 	}
 
 

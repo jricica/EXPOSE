@@ -12,6 +12,7 @@ export interface Post {
   likes: number;
   commentCount?: number;
   shareCount?: number;
+  reportsCount?: number;
   likedByMe?: boolean;
   is_deleted?: boolean;
 }

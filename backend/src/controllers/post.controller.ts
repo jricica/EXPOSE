@@ -28,15 +28,33 @@ export const createPost = async (req: Request, res: Response) => {
 
 export const listPosts = async (req: Request, res: Response) => {
 	try {
-		const { userId, includeExpired, limit, page } = req.query;
+		const { userId, includeExpired, limit, cursorCreatedAt, cursorPostId } = req.query;
 		const currentUserId = tryGetUserId(req);
+
+		if ((cursorCreatedAt && !cursorPostId) || (cursorPostId && !cursorCreatedAt)) {
+			return res.status(400).json({ message: "Cursor incompleto." });
+		}
+
+		let parsedCursorDate: Date | undefined;
+		if (cursorCreatedAt) {
+			parsedCursorDate = new Date(String(cursorCreatedAt));
+			if (isNaN(parsedCursorDate.getTime())) {
+				return res.status(400).json({ message: "cursorCreatedAt inválido." });
+			}
+		}
+
+		const parsedCursorPostId = cursorPostId ? Number(cursorPostId) : undefined;
+		if (cursorPostId && Number.isNaN(parsedCursorPostId)) {
+			return res.status(400).json({ message: "cursorPostId inválido." });
+		}
 
 		const posts = await postService.listPosts({
 			userId: userId ? Number(userId) : undefined,
 			includeExpired: includeExpired === "true",
 			currentUserId,
 			limit: limit ? Number(limit) : undefined,
-			page: page ? Number(page) : undefined,
+			cursorCreatedAt: parsedCursorDate,
+			cursorPostId: parsedCursorPostId,
 		});
 
 		res.json(posts);
@@ -118,4 +136,15 @@ export const deletePost = async (req: Request, res: Response) => {
     Sentry.captureException(err);
     res.status(404).json({ message: "Post not found" });
   }
+};
+
+export const reportPost = async (req: Request, res: Response) => {
+	try {
+		const id = Number(req.params.id);
+		const result = await postService.reportPost(id);
+		res.json(result);
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(400).json({ message: 'Error reporting post' });
+	}
 };
