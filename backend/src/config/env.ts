@@ -70,3 +70,9 @@ export const AUTH_LOGIN_BLOCK_BASE_MS = parsePositiveInt(process.env.AUTH_LOGIN_
 export const AUTH_LOGIN_BLOCK_MAX_MS = parsePositiveInt(process.env.AUTH_LOGIN_BLOCK_MAX_MS, 60 * 60 * 1000);
 =======
 >>>>>>> develop
+
+export const MAX_FILE_SIZE = (() => {
+  const raw = process.env.MAX_FILE_SIZE;
+  const n = raw ? Number(raw) : 5 * 1024 * 1024; // 5MB
+  return Number.isFinite(n) && n > 0 ? n : 5 * 1024 * 1024;
+})();
