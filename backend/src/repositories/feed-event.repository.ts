@@ -42,6 +42,15 @@ export interface FeedPageResult {
 const DEFAULT_PAGE_LIMIT = 20;
 const MAX_PAGE_LIMIT = 100;
 const FEED_VISIBILITIES: FeedVisibility[] = ['PUBLIC', 'FOLLOWERS', 'PRIVATE'];
+const FEED_EVENT_TYPES: FeedEventType[] = [
+  'POST_CREATED',
+  'POST_LIKED',
+  'POST_COMMENTED',
+  'POST_SHARED',
+  'FOLLOWED_USER',
+  'UNFOLLOWED_USER',
+];
+const FEED_ENTITY_TYPES: FeedEntityType[] = ['POST', 'USER', 'COMMENT', 'SHARE'];
 
 const nowIso = () => new Date().toISOString();
 
@@ -49,7 +58,14 @@ const entityIndexKey = (entityType: FeedEntityType, entityId: string) => `${enti
 
 const identityKey = (item: Pick<FeedEventItem, 'pk' | 'sk'>) => `${item.pk}|${item.sk}`;
 
-const compareBySortKeyDesc = (a: FeedEventItem, b: FeedEventItem) => b.sk.localeCompare(a.sk);
+const compareBySortKeyDesc = (a: FeedEventItem, b: FeedEventItem) => {
+  const bySk = b.sk.localeCompare(a.sk);
+  if (bySk !== 0) {
+    return bySk;
+  }
+
+  return b.pk.localeCompare(a.pk);
+};
 
 const validatePositiveInteger = (name: string, value: number) => {
   if (!Number.isInteger(value) || value <= 0) {
@@ -77,6 +93,22 @@ const validateVisibilityQuery = (values?: FeedVisibility[]) => {
   return values.map((value, index) => validateVisibility(value, `visibility[${index}]`));
 };
 
+const validateEventType = (value: unknown): FeedEventType => {
+  if (typeof value !== 'string' || !FEED_EVENT_TYPES.includes(value as FeedEventType)) {
+    throw new Error(`eventType must be one of: ${FEED_EVENT_TYPES.join(', ')}`);
+  }
+
+  return value as FeedEventType;
+};
+
+const validateEntityType = (value: unknown, path = 'entityType'): FeedEntityType => {
+  if (typeof value !== 'string' || !FEED_ENTITY_TYPES.includes(value as FeedEntityType)) {
+    throw new Error(`${path} must be one of: ${FEED_ENTITY_TYPES.join(', ')}`);
+  }
+
+  return value as FeedEntityType;
+};
+
 const normalizeStringId = (value: string, fieldName: string) => {
   const normalized = value.trim();
   if (!normalized) {
@@ -95,6 +127,11 @@ const normalizeIsoDate = (value?: string) => {
     throw new Error('createdAt must be a valid ISO-8601 string');
   }
 
+  const strictIsoUtcPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+  if (!strictIsoUtcPattern.test(normalized)) {
+    throw new Error('createdAt must be a strict ISO-8601 UTC string');
+  }
+
   const timestamp = Date.parse(normalized);
   if (Number.isNaN(timestamp)) {
     throw new Error('createdAt must be a valid ISO-8601 string');
@@ -103,7 +140,53 @@ const normalizeIsoDate = (value?: string) => {
   return new Date(timestamp).toISOString();
 };
 
-const clonePayload = (value: Record<string, unknown>) => JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+const normalizeOptionalDedupeKey = (value?: string) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error('dedupeKey cannot be empty when provided');
+  }
+
+  return normalized;
+};
+
+const normalizeEventId = (value?: string) => {
+  if (value === undefined) {
+    return randomUUID();
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error('eventId cannot be empty when provided');
+  }
+
+  if (normalized.length > 128) {
+    throw new Error('eventId cannot exceed 128 characters');
+  }
+
+  if (!/^[A-Za-z0-9:_-]+$/.test(normalized)) {
+    throw new Error('eventId contains invalid characters');
+  }
+
+  return normalized;
+};
+
+const validateTtl = (value?: number) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error('ttl must be a positive integer when provided');
+  }
+
+  return value;
+};
+
+const clonePayload = <T>(value: T): T => structuredClone(value);
 
 const encodeCursor = (cursor: FeedCursor) => Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
 
@@ -144,6 +227,16 @@ class InMemoryFeedEventStore {
     const bucket = this.byIdentityDedupe.get(identity) ?? new Set<string>();
     bucket.add(dedupeKey);
     this.byIdentityDedupe.set(identity, bucket);
+  }
+
+  private detachSingleIdentityDedupe(identity: string, dedupeKey: string) {
+    const bucket = this.byIdentityDedupe.get(identity);
+    if (!bucket) return;
+
+    bucket.delete(dedupeKey);
+    if (bucket.size === 0) {
+      this.byIdentityDedupe.delete(identity);
+    }
   }
 
   private detachIdentityDedupe(identity: string) {
@@ -200,6 +293,11 @@ class InMemoryFeedEventStore {
     this.attach(this.byEntity, entityIndexKey(item.entityType, item.entityId), identity);
 
     if (dedupeKey) {
+      const previousIdentity = this.byBusinessDedupe.get(dedupeKey);
+      if (previousIdentity && previousIdentity !== identity) {
+        this.detachSingleIdentityDedupe(previousIdentity, dedupeKey);
+      }
+
       this.byBusinessDedupe.set(dedupeKey, identity);
       this.attachIdentityDedupe(identity, dedupeKey);
     }
@@ -238,16 +336,20 @@ export class FeedEventRepository {
 
     const sorted = [...items]
       .sort(compareBySortKeyDesc)
-      .filter((item) => !visibility || visibility.length === 0 || visibility.includes(item.visibility));
+      .filter((item) => !visibility || visibility.includes(item.visibility));
 
     let start = 0;
     if (query.cursor) {
       const cursor = decodeCursor(query.cursor);
       const index = sorted.findIndex((item) => item.sk === cursor.lastSk && item.pk === cursor.lastPk);
-      if (index < 0) {
-        throw new Error('Cursor not found for current result set');
+      if (index >= 0) {
+        start = index + 1;
+      } else {
+        const fallbackIndex = sorted.findIndex(
+          (item) => item.sk < cursor.lastSk || (item.sk === cursor.lastSk && item.pk < cursor.lastPk),
+        );
+        start = fallbackIndex >= 0 ? fallbackIndex : sorted.length;
       }
-      start = index + 1;
     }
 
     const pageItems = sorted.slice(start, start + limit);
@@ -273,7 +375,11 @@ export class FeedEventRepository {
     const parentEntityId = input.parentEntityId ? normalizeStringId(input.parentEntityId, 'parentEntityId') : undefined;
     const createdAt = normalizeIsoDate(input.createdAt);
     const visibility = validateVisibility(input.visibility ?? 'PUBLIC', 'visibility');
-    const dedupeKey = input.dedupeKey?.trim();
+    const dedupeKey = normalizeOptionalDedupeKey(input.dedupeKey);
+    const ttl = validateTtl(input.ttl);
+    const eventType = validateEventType(input.eventType);
+    const entityType = validateEntityType(input.entityType);
+    const eventId = normalizeEventId(input.eventId);
 
     if (dedupeKey) {
       const existing = this.store.getByBusinessDedupe(dedupeKey);
@@ -282,20 +388,18 @@ export class FeedEventRepository {
       }
     }
 
-    const eventId = input.eventId ?? randomUUID();
-
     const item = buildFeedEventItem(
       {
         feedUserId: input.feedUserId,
         actorUserId: input.actorUserId,
-        eventType: input.eventType,
-        entityType: input.entityType,
+        eventType,
+        entityType,
         entityId,
         parentEntityId,
         payload: clonePayload(input.payload ?? {}),
         visibility,
         createdAt,
-        ttl: input.ttl,
+        ttl,
       },
       eventId,
     );
@@ -314,9 +418,10 @@ export class FeedEventRepository {
   }
 
   async getEntityActivity(entityType: FeedEntityType, entityId: string, query: FeedPageQuery = {}): Promise<FeedPageResult> {
+    const validatedEntityType = validateEntityType(entityType, 'entityType');
     const normalizedEntityId = normalizeStringId(entityId, 'entityId');
 
-    return this.page(this.store.listByEntity(entityType, normalizedEntityId), query);
+    return this.page(this.store.listByEntity(validatedEntityType, normalizedEntityId), query);
   }
 }
 
