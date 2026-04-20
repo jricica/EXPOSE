@@ -34,6 +34,23 @@ export interface Comment {
   content: string;
   createdAt: Date;
   updatedAt?: Date;
+  moderationStatus: 'active' | 'hidden';
+  reportsCount: number;
+  moderatedAt?: Date;
+  moderationReason?: string;
+}
+
+export interface CommentListQuery {
+  limit: number;
+  cursorCommentId?: string;
+}
+
+export interface PaginatedComments {
+  comments: Comment[];
+  pagination: {
+    limit: number;
+    nextCursorCommentId: string | null;
+  };
 }
 
 export interface ShareRecord {

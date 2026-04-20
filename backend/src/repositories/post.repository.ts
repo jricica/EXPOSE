@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { ddbDocClient, INDEXES, TABLES } from '../config/dynamo';
-import { Comment, Post, PostId } from '../models/post.model';
+import { Comment, CommentListQuery, PaginatedComments, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
 
 export interface PostRepositoryFindManyFilters {
@@ -50,6 +50,19 @@ const mapItemToPost = (item: any, likedByMe = false): Post => ({
   reportsCount: item.reportsCount ?? 0,
   likedByMe,
   is_deleted: Boolean(item.is_deleted),
+});
+
+const mapItemToComment = (item: any): Comment => ({
+  commentId: String(item.commentId),
+  postId: Number(item.postId),
+  userId: Number(item.userId),
+  content: String(item.content),
+  createdAt: parseDate(item.createdAt),
+  updatedAt: item.updatedAt ? parseDate(item.updatedAt) : undefined,
+  moderationStatus: item.moderationStatus === 'hidden' ? 'hidden' : 'active',
+  reportsCount: Number(item.reportsCount ?? 0),
+  moderatedAt: item.moderatedAt ? parseDate(item.moderatedAt) : undefined,
+  moderationReason: item.moderationReason ? String(item.moderationReason) : undefined,
 });
 
 const comparePostsDesc = (a: any, b: any) => {
@@ -598,6 +611,8 @@ export class PostRepository {
                 content,
                 createdAt: now.toISOString(),
                 updatedAt: now.toISOString(),
+                moderationStatus: 'active',
+                reportsCount: 0,
               },
               ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(commentId)',
             },
@@ -626,41 +641,131 @@ export class PostRepository {
       content,
       createdAt: now,
       updatedAt: now,
+      moderationStatus: 'active',
+      reportsCount: 0,
     };
   }
 
-  async listComments(postId: PostId): Promise<Comment[]> {
-    const items: any[] = [];
-    let lastKey: Record<string, any> | undefined;
+  async listComments(postId: PostId, query: CommentListQuery): Promise<PaginatedComments> {
+    const comments: Comment[] = [];
+    let lastKey: Record<string, any> | undefined = query.cursorCommentId
+      ? { postId, commentId: query.cursorCommentId }
+      : undefined;
 
     do {
+      const remaining = query.limit - comments.length;
+      if (remaining <= 0) {
+        break;
+      }
+
       const result = await ddbDocClient.send(
         new QueryCommand({
           TableName: TABLES.POST_COMMENTS,
           KeyConditionExpression: 'postId = :pid',
           ExpressionAttributeValues: {
             ':pid': postId,
+            ':active': 'active',
           },
-          ScanIndexForward: true,
+          ExpressionAttributeNames: {
+            '#status': 'moderationStatus',
+          },
+          FilterExpression: '#status = :active OR attribute_not_exists(#status)',
+          ScanIndexForward: false,
+          Limit: remaining,
           ExclusiveStartKey: lastKey,
         })
       );
 
       if (result.Items) {
-        items.push(...result.Items);
+        comments.push(...result.Items.map((item) => mapItemToComment(item)));
       }
 
       lastKey = result.LastEvaluatedKey as any;
-    } while (lastKey);
+    } while (lastKey && comments.length < query.limit);
 
-    return items.map((item) => ({
-      commentId: item.commentId,
-      postId: item.postId,
-      userId: item.userId,
-      content: item.content,
-      createdAt: parseDate(item.createdAt),
-      updatedAt: item.updatedAt ? parseDate(item.updatedAt) : undefined,
-    }));
+    return {
+      comments,
+      pagination: {
+        limit: query.limit,
+        nextCursorCommentId: lastKey?.commentId ? String(lastKey.commentId) : null,
+      },
+    };
+  }
+
+  async reportComment(postId: PostId, commentId: string, moderationThreshold: number): Promise<Comment | null> {
+    const incrementResult = await ddbDocClient.send(
+      new UpdateCommand({
+        TableName: TABLES.POST_COMMENTS,
+        Key: { postId, commentId },
+        UpdateExpression: 'SET reportsCount = if_not_exists(reportsCount, :zero) + :one, updatedAt = :updatedAt',
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':one': 1,
+          ':updatedAt': new Date().toISOString(),
+        },
+        ConditionExpression: 'attribute_exists(postId) AND attribute_exists(commentId)',
+        ReturnValues: 'ALL_NEW',
+      })
+    ).catch(() => null);
+
+    if (!incrementResult?.Attributes) {
+      return null;
+    }
+
+    const currentReports = Number(incrementResult.Attributes.reportsCount ?? 0);
+    if (currentReports >= moderationThreshold) {
+      try {
+        await ddbDocClient.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Update: {
+                  TableName: TABLES.POST_COMMENTS,
+                  Key: { postId, commentId },
+                  UpdateExpression: 'SET moderationStatus = :hidden, moderationReason = :reason, moderatedAt = :moderatedAt, updatedAt = :updatedAt',
+                  ConditionExpression: 'attribute_exists(postId) AND attribute_exists(commentId) AND (moderationStatus = :active OR attribute_not_exists(moderationStatus))',
+                  ExpressionAttributeValues: {
+                    ':hidden': 'hidden',
+                    ':active': 'active',
+                    ':reason': 'auto_reports_threshold',
+                    ':moderatedAt': new Date().toISOString(),
+                    ':updatedAt': new Date().toISOString(),
+                  },
+                },
+              },
+              {
+                Update: {
+                  TableName: TABLES.FEED,
+                  Key: { postId },
+                  UpdateExpression: 'SET commentCount = commentCount - :one',
+                  ConditionExpression: 'attribute_exists(postId) AND commentCount >= :one',
+                  ExpressionAttributeValues: {
+                    ':one': 1,
+                  },
+                },
+              },
+            ],
+          })
+        );
+      } catch (error) {
+        if (!isConditionalTransactionFailure(error)) {
+          throw error;
+        }
+      }
+    }
+
+    const refreshed = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLES.POST_COMMENTS,
+        Key: { postId, commentId },
+      })
+    );
+
+    if (!refreshed.Item) {
+      return null;
+    }
+
+    return mapItemToComment(refreshed.Item);
   }
 
   async deleteComment(postId: PostId, commentId: string): Promise<void> {

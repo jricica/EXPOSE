@@ -128,11 +128,51 @@ export const addComment = async (req: Request, res: Response) => {
 export const listComments = async (req: Request, res: Response) => {
 	try {
 		const postId = Number(req.params.id);
-		const comments = await postService.listComments(postId);
+		if (!Number.isInteger(postId) || postId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
+		const rawLimit = req.query.limit;
+		const rawCursorCommentId = req.query.cursorCommentId;
+		const limit = rawLimit ? Number(rawLimit) : undefined;
+
+		if (rawLimit !== undefined && (!Number.isInteger(limit) || Number(limit) <= 0)) {
+			return res.status(400).json({ message: 'limit inválido.' });
+		}
+
+		const comments = await postService.listComments(postId, {
+			limit,
+			cursorCommentId: rawCursorCommentId ? String(rawCursorCommentId) : undefined,
+		});
 		res.json(comments);
 	} catch (err) {
 		Sentry.captureException(err);
 		res.status(500).json({ message: "Error al listar comentarios." });
+	}
+};
+
+export const reportComment = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		if (!Number.isInteger(postId) || postId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
+		const rawCommentId = req.params.commentId;
+		const commentId = Array.isArray(rawCommentId) ? rawCommentId[0] : rawCommentId;
+		if (!commentId) {
+			return res.status(400).json({ message: 'commentId inválido.' });
+		}
+
+		const result = await postService.reportComment(postId, commentId);
+		res.json(result);
+	} catch (err) {
+		Sentry.captureException(err);
+		if (err instanceof Error && /no encontrado|not found/i.test(err.message)) {
+			return res.status(404).json({ message: err.message });
+		}
+
+		res.status(400).json({ message: err instanceof Error ? err.message : 'Error reportando comentario.' });
 	}
 };
 
