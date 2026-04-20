@@ -20,6 +20,7 @@ const mapUser = (user: {
     bio: string | null;
     display_name: string | null;
     avatar_url: string | null;
+    role: number;
     createdAt: Date;
     lastLogin: Date | null;
 }): User => ({
@@ -32,7 +33,7 @@ const mapUser = (user: {
     avatar_url: user.avatar_url ?? undefined,
     createdAt: user.createdAt,
     lastLogin: user.lastLogin,
-    role: 1,
+    role: user.role,
     friends: [],
 });
 

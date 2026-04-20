@@ -118,12 +118,11 @@ export class UserService {
 
 }
 
-export function buildUser(input: CreateUserInput): Omit<User, "id"> {
+export function buildUser(input: CreateUserInput): Omit<User, "id" | "role"> {
   return {
     username: validateUsername(input.username),
     email: validateEmail(input.email),
     passwordHash: input.passwordHash,
-    role: 1,
     friends: [],
     createdAt: new Date(),
     lastLogin: input.lastLogin ?? null,
