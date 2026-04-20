@@ -1,6 +1,7 @@
-import { query } from '../db/pool';
+import { Prisma } from '@prisma/client';
 import { Post, PostId, LikeRecord } from '../models/post.model';
 import { UserId } from '../models/user.model';
+import prisma from '../lib/prisma';
 
 export interface PostRepositoryFindManyFilters {
 	userId?: UserId;
@@ -15,132 +16,166 @@ export class PostRepository {
 		data: Omit<Post, 'id' | 'likes' | 'likedByMe' | 'is_deleted'> & { is_deleted?: boolean }
 	): Promise<PostId> {
 		const isDeleted = data.is_deleted ?? false;
-		const result = await query<any>(
-			'INSERT INTO posts (userId, content, media_url, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?, ?)',
-			[data.userId, data.content, data.media_url || null, data.createdAt, data.expiresAt, isDeleted]
-		);
-		return result.insertId;
+		const post = await prisma.post.create({
+			data: {
+				userId: data.userId,
+				content: data.content,
+				media_url: data.media_url ?? null,
+				createdAt: data.createdAt,
+				expiresAt: data.expiresAt,
+				is_deleted: isDeleted,
+			},
+			select: {
+				id: true,
+			},
+		});
+		return post.id;
 	}
 
 	async findById(id: PostId, currentUserId?: UserId): Promise<Post | null> {
-		const sql = currentUserId
-			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
-               FROM posts p 
-               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
-               WHERE p.id = ? AND p.is_deleted = 0`
-			: 'SELECT * FROM posts WHERE id = ? AND is_deleted = 0';
-
-		const params = currentUserId ? [currentUserId, id] : [id];
-		const results = await query<any[]>(sql, params);
-
-		if (results.length === 0) return null;
-
-		const post = results[0];
 		if (currentUserId) {
-			post.likedByMe = Boolean(post.likedByMe);
+			const post = await prisma.post.findFirst({
+				where: { id, is_deleted: false },
+				include: {
+					post_likes: {
+						where: { userId: currentUserId },
+						select: { id: true },
+					},
+				},
+			});
+
+			if (!post) return null;
+
+			const { post_likes, ...basePost } = post;
+			return {
+				...basePost,
+				likedByMe: post_likes.length > 0,
+			} as Post;
 		}
-		post.is_deleted = Boolean(post.is_deleted);
-		return post as Post;
+
+		const post = await prisma.post.findFirst({
+			where: { id, is_deleted: false },
+		});
+
+		return post as Post | null;
 	}
 
 	async findMany(filters: PostRepositoryFindManyFilters = {}): Promise<Post[]> {
 		const { currentUserId } = filters;
 
-		let sql = currentUserId
-			? `SELECT p.*, IF(l.userId IS NOT NULL, 1, 0) as likedByMe 
-               FROM posts p 
-               LEFT JOIN post_likes l ON p.id = l.postId AND l.userId = ? 
-               WHERE p.is_deleted = 0`
-			: 'SELECT * FROM posts WHERE is_deleted = 0';
+		const where: Prisma.PostWhereInput = {
+			is_deleted: false,
+			...(filters.userId !== undefined ? { userId: filters.userId } : {}),
+			...(filters.expiresAfter ? { expiresAt: { gt: filters.expiresAfter } } : {}),
+		};
 
-		const params: any[] = [];
 		if (currentUserId) {
-			params.push(currentUserId);
+			const posts = await prisma.post.findMany({
+				where,
+				orderBy: { createdAt: 'desc' },
+				...(filters.limit !== undefined ? { take: filters.limit } : {}),
+				...(filters.offset !== undefined ? { skip: filters.offset } : {}),
+				include: {
+					post_likes: {
+						where: { userId: currentUserId },
+						select: { id: true },
+					},
+				},
+			});
+
+			return posts.map((post) => {
+				const { post_likes, ...basePost } = post;
+				return {
+					...basePost,
+					likedByMe: post_likes.length > 0,
+				} as Post;
+			});
 		}
 
-		if (filters.userId) {
-			sql += currentUserId ? ' AND p.userId = ?' : ' AND userId = ?';
-			params.push(filters.userId);
-		}
+		const posts = await prisma.post.findMany({
+			where,
+			orderBy: { createdAt: 'desc' },
+			...(filters.limit !== undefined ? { take: filters.limit } : {}),
+			...(filters.offset !== undefined ? { skip: filters.offset } : {}),
+		});
 
-		if (filters.expiresAfter) {
-			sql += currentUserId ? ' AND p.expiresAt > ?' : ' AND expiresAt > ?';
-			params.push(filters.expiresAfter);
-		}
-
-		sql += currentUserId ? ' ORDER BY p.createdAt DESC' : ' ORDER BY createdAt DESC';
-		
-		if (filters.limit !== undefined) {
-			sql += ' LIMIT ?';
-			params.push(filters.limit);
-			
-			if (filters.offset !== undefined) {
-				sql += ' OFFSET ?';
-				params.push(filters.offset);
-			}
-		}
-
-		const results = await query<any[]>(sql, params);
-
-		return results.map(post => ({
+		return posts.map((post) => ({
 			...post,
-			likedByMe: currentUserId ? Boolean(post.likedByMe) : false,
-			is_deleted: Boolean(post.is_deleted),
+			likedByMe: false,
 		})) as Post[];
 	}
 
 	async countMany(filters: Omit<PostRepositoryFindManyFilters, 'limit' | 'offset' | 'currentUserId'> = {}): Promise<number> {
-		let sql = 'SELECT COUNT(*) as total FROM posts WHERE is_deleted = 0';
-		const params: any[] = [];
-
-		if (filters.userId) {
-			sql += ' AND userId = ?';
-			params.push(filters.userId);
-		}
-
-		if (filters.expiresAfter) {
-			sql += ' AND expiresAt > ?';
-			params.push(filters.expiresAfter);
-		}
-
-		const result = await query<any[]>(sql, params);
-		return result[0].total;
+		return prisma.post.count({
+			where: {
+				is_deleted: false,
+				...(filters.userId !== undefined ? { userId: filters.userId } : {}),
+				...(filters.expiresAfter ? { expiresAt: { gt: filters.expiresAfter } } : {}),
+			},
+		});
 	}
 
 	async updateExpiresAt(id: PostId, expiresAt: Date): Promise<void> {
-		await query(
-			'UPDATE posts SET expiresAt = ? WHERE id = ? AND is_deleted = 0',
-			[expiresAt, id]
-		);
+		await prisma.post.updateMany({
+			where: {
+				id,
+				is_deleted: false,
+			},
+			data: {
+				expiresAt,
+			},
+		});
 	}
 
 	async delete(id: PostId): Promise<void> {
-  		await query('UPDATE posts SET is_deleted = 1 WHERE id = ?', [id]);
+  		await prisma.post.update({
+			where: { id },
+			data: { is_deleted: true },
+		});
 	}
 
 
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
-		const existing = await query<LikeRecord[]>(
-			'SELECT * FROM post_likes WHERE postId = ? AND userId = ?',
-			[postId, userId]
-		);
+		return prisma.$transaction(async (tx) => {
+			const existing = await tx.postLike.findUnique({
+				where: {
+					postId_userId: { postId, userId },
+				},
+			}) as LikeRecord | null;
 
-		if (existing.length > 0) {
-			await query('DELETE FROM post_likes WHERE postId = ? AND userId = ?', [postId, userId]);
-			await query('UPDATE posts SET likes = likes - 1 WHERE id = ? AND is_deleted = 0', [postId]);
-		} else {
-			try {
-				await query('INSERT INTO post_likes (postId, userId, createdAt) VALUES (?, ?, NOW())', [postId, userId]);
-				await query('UPDATE posts SET likes = likes + 1 WHERE id = ? AND is_deleted = 0', [postId]);
-			} catch (error: any) {
-				if (error.code !== 'ER_DUP_ENTRY') {
-					throw error;
+			if (existing) {
+				await tx.postLike.delete({
+					where: {
+						postId_userId: { postId, userId },
+					},
+				});
+				await tx.post.updateMany({
+					where: { id: postId, is_deleted: false },
+					data: { likes: { decrement: 1 } },
+				});
+			} else {
+				try {
+					await tx.postLike.create({
+						data: { postId, userId },
+					});
+					await tx.post.updateMany({
+						where: { id: postId, is_deleted: false },
+						data: { likes: { increment: 1 } },
+					});
+				} catch (error) {
+					if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+						throw error;
+					}
 				}
 			}
-		}
 
-		const updated = await this.findById(postId);
-		return updated?.likes ?? 0;
+			const updated = await tx.post.findUnique({
+				where: { id: postId },
+				select: { likes: true },
+			});
+
+			return updated?.likes ?? 0;
+		});
 	}
 }
 
