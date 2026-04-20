@@ -31,3 +31,18 @@ export const COMMENT_REPORTS_THRESHOLD = (() => {
   return Number.isFinite(n) && n > 0 ? n : 3;
 })();
 
+export const AWS_REGION = (() => {
+  const value = process.env.AWS_REGION;
+  if (!value) {
+    throw new Error('AWS_REGION is not defined');
+  }
+  return value;
+})();
+
+export const AWS_S3_BUCKET = (() => {
+  const value = process.env.AWS_S3_BUCKET;
+  if (!value) {
+    throw new Error('AWS_S3_BUCKET is not defined');
+  }
+  return value;
+})();
