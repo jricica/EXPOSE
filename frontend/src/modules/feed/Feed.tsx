@@ -16,6 +16,7 @@ const Feed: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
+  const [loadingDetailPostId, setLoadingDetailPostId] = useState<number | null>(null);
 
   // estado para filtro
   const [showOnlyMine, setShowOnlyMine] = useState(false);
@@ -82,6 +83,44 @@ const Feed: React.FC = () => {
       } else {
         setError('No se pudo actualizar el like');
       }
+    }
+  };
+
+  const handleToggleDetails = async (postId: number) => {
+    if (expandedPostId === postId) {
+      setExpandedPostId(null);
+      return;
+    }
+
+    try {
+      setLoadingDetailPostId(postId);
+      const detail = await postService.getPostDetail(postId);
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                likes: detail.likes,
+                likedByMe: detail.likedByMe,
+                commentCount: detail.commentCount,
+                shareCount: detail.shareCount,
+              }
+            : post,
+        ),
+      );
+
+      setExpandedPostId(postId);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(err.message || `Error ${err.status}`);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('No se pudo cargar el detalle del post');
+      }
+    } finally {
+      setLoadingDetailPostId(null);
     }
   };
 
@@ -194,7 +233,7 @@ const Feed: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setExpandedPostId((prev) => (prev === post.id ? null : post.id))}
+                onClick={() => handleToggleDetails(post.id)}
                 style={{
                   border: '1px solid #555',
                   borderRadius: 6,
@@ -204,7 +243,11 @@ const Feed: React.FC = () => {
                   cursor: 'pointer',
                 }}
               >
-                {expandedPostId === post.id ? 'Ocultar detalles' : 'Mostrar detalles'}
+                {loadingDetailPostId === post.id
+                  ? 'Cargando...'
+                  : expandedPostId === post.id
+                  ? 'Ocultar detalles'
+                  : 'Mostrar detalles'}
               </button>
             </div>
           )}
