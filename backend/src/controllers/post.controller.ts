@@ -211,6 +211,35 @@ export const sharePost = async (req: Request, res: Response) => {
 	}
 };
 
+export const repostPost = async (req: Request, res: Response) => {
+	try {
+		const originalPostId = Number(req.params.id);
+		if (!Number.isInteger(originalPostId) || originalPostId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
+		const actorUserId = getUserId(req);
+		const { content } = req.body ?? {};
+		if (content !== undefined && typeof content !== 'string') {
+			return res.status(400).json({ message: 'content debe ser string.' });
+		}
+
+		const repost = await postService.repostPost(originalPostId, actorUserId, content);
+		res.status(201).json(repost);
+	} catch (err) {
+		Sentry.captureException(err);
+		if (err instanceof Error && /original no encontrado|not found/i.test(err.message)) {
+			return res.status(404).json({ message: err.message });
+		}
+
+		if (err instanceof Error && /expirado/i.test(err.message)) {
+			return res.status(409).json({ message: err.message });
+		}
+
+		res.status(400).json({ message: err instanceof Error ? err.message : 'Error al repostear contenido.' });
+	}
+};
+
 export const getPost = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
