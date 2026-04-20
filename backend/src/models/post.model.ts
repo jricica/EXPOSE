@@ -7,6 +7,9 @@ export interface Post {
   userId: UserId;
   content: string;
   media_url?: string;
+  repostOfPostId?: PostId;
+  originalAuthorId?: UserId;
+  rootPostId?: PostId;
   createdAt: Date;
   expiresAt: Date;
   likes: number;
@@ -56,5 +59,6 @@ export interface PaginatedComments {
 export interface ShareRecord {
   postId: PostId;
   userId: UserId;
+  repostPostId?: PostId;
   createdAt: Date;
 }

@@ -238,7 +238,7 @@ export class FeedTimelineRepository {
     return items;
   }
 
-  async upsertEntries(entries: FeedTimelineUpsertItem[]): Promise<void> {
+  private async upsertEntries(entries: FeedTimelineUpsertItem[]): Promise<void> {
     const validEntries = entries.filter(
       (entry) => Number.isInteger(entry.feedUserId) && entry.feedUserId > 0
         && Number.isInteger(entry.actorUserId) && entry.actorUserId > 0,
@@ -270,7 +270,7 @@ export class FeedTimelineRepository {
     }
   }
 
-  async deleteEntries(feedUserId: UserId, sortKeys: string[]): Promise<void> {
+  private async deleteEntries(feedUserId: UserId, sortKeys: string[]): Promise<void> {
     const uniqueSortKeys = Array.from(new Set(sortKeys.filter((key) => Boolean(key))));
     if (uniqueSortKeys.length === 0) {
       return;

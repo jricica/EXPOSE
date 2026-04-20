@@ -265,10 +265,72 @@ export class PostService {
 		};
 	}
 
+	async deleteComment(postId: PostId, commentId: string, actorUserId: UserId): Promise<void> {
+		const post = await this.repository.findById(postId);
+		if (!post) {
+			throw new Error('Post no encontrado');
+		}
+
+		const comment = await this.repository.findCommentById(postId, commentId);
+		if (!comment) {
+			throw new Error('Comentario no encontrado');
+		}
+
+		const canDelete = comment.userId === actorUserId || post.userId === actorUserId;
+		if (!canDelete) {
+			throw new Error('No autorizado para eliminar este comentario');
+		}
+
+		const deleted = await this.repository.deleteComment(postId, commentId);
+		if (!deleted) {
+			throw new Error('Comentario no encontrado');
+		}
+	}
+
 	async sharePost(postId: PostId, userId: UserId): Promise<number> {
 		const post = await this.repository.findById(postId);
 		if (!post) throw new Error('Post no encontrado');
 		return this.repository.share(postId, userId);
+	}
+
+	async repostPost(originalPostId: PostId, actorUserId: UserId, content?: string): Promise<Post> {
+		const originalPost = await this.repository.findById(originalPostId);
+		if (!originalPost) {
+			throw new Error('Post original no encontrado');
+		}
+
+		if (originalPost.expiresAt.getTime() <= this.clock().getTime()) {
+			throw new Error('No se puede repostear un post expirado');
+		}
+
+		const repostContent = (content?.trim() ?? '') || originalPost.content;
+		const rootPostId = originalPost.rootPostId ?? originalPost.id;
+
+		const result = await this.repository.createRepost({
+			originalPostId,
+			originalAuthorId: originalPost.originalAuthorId ?? originalPost.userId,
+			actorUserId,
+			content: repostContent,
+			expiresAt: originalPost.expiresAt,
+			rootPostId,
+		});
+
+		const repost = await this.repository.findById(result.repostPostId);
+		if (!repost) {
+			throw new Error('No se pudo recuperar el repost creado');
+		}
+
+		if (result.created) {
+			await this.publishPostToTimelines(repost);
+			await this.repository.markFanOutReady(repost.id);
+		}
+
+		const readyRepost = await this.repository.findById(repost.id);
+		if (!readyRepost) {
+			throw new Error('No se pudo recuperar el repost final');
+		}
+
+		return readyRepost;
 	}
 
 	async getPostById(id: PostId, currentUserId?: UserId): Promise<Post> {

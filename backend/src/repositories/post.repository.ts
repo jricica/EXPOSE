@@ -32,6 +32,15 @@ export interface PostLikeState {
   likedByMe: boolean;
 }
 
+export interface RepostCreateInput {
+  originalPostId: PostId;
+  originalAuthorId: UserId;
+  actorUserId: UserId;
+  content: string;
+  expiresAt: Date;
+  rootPostId: PostId;
+}
+
 const generatePostId = (): PostId => Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
 
 const parseDate = (value?: string | number | Date): Date =>
@@ -42,6 +51,9 @@ const mapItemToPost = (item: any, likedByMe = false): Post => ({
   userId: item.userId,
   content: item.content,
   media_url: item.media_url,
+  repostOfPostId: item.repostOfPostId !== undefined ? Number(item.repostOfPostId) : undefined,
+  originalAuthorId: item.originalAuthorId !== undefined ? Number(item.originalAuthorId) : undefined,
+  rootPostId: item.rootPostId !== undefined ? Number(item.rootPostId) : undefined,
   createdAt: parseDate(item.createdAt),
   expiresAt: parseDate(item.expiresAt),
   likes: item.likes ?? 0,
@@ -94,6 +106,9 @@ export class PostRepository {
           userId: data.userId,
           content: data.content,
           media_url: data.media_url,
+          repostOfPostId: data.repostOfPostId,
+          originalAuthorId: data.originalAuthorId,
+          rootPostId: data.rootPostId,
           createdAt: data.createdAt.toISOString(),
           expiresAt: data.expiresAt.toISOString(),
           likes: 0,
@@ -768,7 +783,22 @@ export class PostRepository {
     return mapItemToComment(refreshed.Item);
   }
 
-  async deleteComment(postId: PostId, commentId: string): Promise<void> {
+  async findCommentById(postId: PostId, commentId: string): Promise<Comment | null> {
+    const result = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLES.POST_COMMENTS,
+        Key: { postId, commentId },
+      })
+    );
+
+    if (!result.Item) {
+      return null;
+    }
+
+    return mapItemToComment(result.Item);
+  }
+
+  async deleteComment(postId: PostId, commentId: string): Promise<boolean> {
     try {
       await ddbDocClient.send(
         new TransactWriteCommand({
@@ -794,11 +824,99 @@ export class PostRepository {
           ],
         })
       );
+      return true;
+    } catch (error) {
+      if (isConditionalTransactionFailure(error)) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
+  async createRepost(input: RepostCreateInput): Promise<{ repostPostId: PostId; created: boolean }> {
+    const repostPostId = generatePostId();
+    const createdAt = new Date();
+
+    try {
+      await ddbDocClient.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLES.POST_SHARES,
+                Item: {
+                  postId: input.originalPostId,
+                  userId: input.actorUserId,
+                  repostPostId,
+                  createdAt: createdAt.toISOString(),
+                },
+                ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
+              },
+            },
+            {
+              Update: {
+                TableName: TABLES.FEED,
+                Key: { postId: input.originalPostId },
+                UpdateExpression: 'SET shareCount = if_not_exists(shareCount, :zero) + :one',
+                ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+                ExpressionAttributeValues: {
+                  ':zero': 0,
+                  ':one': 1,
+                  ':true': true,
+                },
+              },
+            },
+            {
+              Put: {
+                TableName: TABLES.FEED,
+                Item: {
+                  postId: repostPostId,
+                  userId: input.actorUserId,
+                  content: input.content,
+                  createdAt: createdAt.toISOString(),
+                  expiresAt: input.expiresAt.toISOString(),
+                  likes: 0,
+                  commentCount: 0,
+                  shareCount: 0,
+                  reportsCount: 0,
+                  fanOutReady: false,
+                  is_deleted: false,
+                  repostOfPostId: input.originalPostId,
+                  originalAuthorId: input.originalAuthorId,
+                  rootPostId: input.rootPostId,
+                },
+                ConditionExpression: 'attribute_not_exists(postId)',
+              },
+            },
+          ],
+        })
+      );
+
+      return { repostPostId, created: true };
     } catch (error) {
       if (!isConditionalTransactionFailure(error)) {
         throw error;
       }
     }
+
+    const existingShare = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLES.POST_SHARES,
+        Key: { postId: input.originalPostId, userId: input.actorUserId },
+        ConsistentRead: true,
+      })
+    );
+
+    const existingRepostPostId = existingShare.Item?.repostPostId;
+    if (!existingRepostPostId) {
+      throw new Error('No se pudo resolver el repost existente para este usuario');
+    }
+
+    return {
+      repostPostId: Number(existingRepostPostId),
+      created: false,
+    };
   }
 
   async share(postId: PostId, userId: UserId): Promise<number> {
