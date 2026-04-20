@@ -58,8 +58,17 @@ describe('UserRegister', () => {
     });
 });
 
-describe('PasswordValidation', () => {
-    it('should return an error for invalid password', async () => {
+  it('returns token on register and allows immediate /auth/me bootstrap', async () => {
+    const createdUser = {
+      id: 100,
+      username: 'testname',
+      email: 'testname@ufm.edu',
+      passwordHash: 'hashed',
+      role: 1,
+      friends: [],
+      createdAt: new Date(),
+      lastLogin: null,
+    };
 
         const response = await supertest(app).post('/api/auth/register').send({
             "email": "testname@ufm.edu",
@@ -71,4 +80,28 @@ describe('PasswordValidation', () => {
         expect(response.body).toBeDefined();
         expect(response.body.message).toContain("Password must be at least 8 characters");
     });
+
+    expect(registerResponse.status).toBe(201);
+    expect(registerResponse.body.user.email).toBe('testname@ufm.edu');
+    expect(registerResponse.body.token.accessToken).toEqual(expect.any(String));
+    expect(registerResponse.body.authentication_token).toBe(registerResponse.body.token.accessToken);
+
+    const meResponse = await supertest(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${registerResponse.body.authentication_token}`);
+
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body).toHaveProperty('user');
+    expect(meResponse.body.user.id).toBe(100);
+    expect(meResponse.body.user.email).toBe('testname@ufm.edu');
+    expect(meResponse.body.user.passwordHash).toBeUndefined();
+  });
+
+  it('returns auth error when token is missing', async () => {
+    const response = await supertest(app).get('/api/auth/me');
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('unauthorized');
+    expect(response.body.message).toBe('Token required');
+  });
 });
