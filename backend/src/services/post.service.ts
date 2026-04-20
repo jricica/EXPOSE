@@ -340,9 +340,14 @@ export class PostService {
   		return post;
 	}
 
-	async deletePost(id: PostId): Promise<void> {
-  		const post = await this.repository.findById(id);
-  		if (!post) throw new Error("Post not found");
+	async deletePost(id: PostId, actorUserId: UserId): Promise<void> {
+		const post = await this.repository.findById(id);
+		if (!post) throw new Error("Post not found");
+
+		if (post.userId !== actorUserId) {
+			throw new Error("No autorizado para eliminar este post");
+		}
+
 		await this.repository.delete(id);
 	}
 
