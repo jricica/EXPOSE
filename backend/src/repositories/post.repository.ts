@@ -1,6 +1,5 @@
 import {
   BatchGetCommand,
-  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -356,38 +355,6 @@ export class PostRepository {
         ConditionExpression: 'attribute_exists(postId)',
       })
     );
-  }
-
-  private async updateLikeCount(postId: PostId, delta: number): Promise<number> {
-    const result = await ddbDocClient.send(
-      new UpdateCommand({
-        TableName: TABLES.FEED,
-        Key: { postId },
-        UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :delta',
-        ExpressionAttributeNames: { '#likes': 'likes' },
-        ExpressionAttributeValues: {
-          ':zero': 0,
-          ':delta': delta,
-        },
-        ReturnValues: 'UPDATED_NEW',
-      })
-    );
-
-    const likes = Number(result.Attributes?.likes ?? 0);
-    if (likes < 0) {
-      await ddbDocClient.send(
-        new UpdateCommand({
-          TableName: TABLES.FEED,
-          Key: { postId },
-          UpdateExpression: 'SET #likes = :zero',
-          ExpressionAttributeNames: { '#likes': 'likes' },
-          ExpressionAttributeValues: { ':zero': 0 },
-        })
-      );
-      return 0;
-    }
-
-    return likes;
   }
 
   async toggleLike(postId: PostId, userId: UserId): Promise<number> {
