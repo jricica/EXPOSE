@@ -69,8 +69,8 @@ export const toggleLike = async (req: Request, res: Response) => {
 		const postId = Number(req.params.id);
 		const userId = getUserId(req);
 
-		const likes = await postService.toggleLike(postId, userId);
-		res.json({ likes });
+		const state = await postService.toggleLike(postId, userId);
+		res.json(state);
 	} catch (err) {
 		Sentry.captureException(err);
 		res.status(500).json({ message: "Error al procesar like." });
@@ -80,6 +80,10 @@ export const toggleLike = async (req: Request, res: Response) => {
 export const setLike = async (req: Request, res: Response) => {
 	try {
 		const postId = Number(req.params.id);
+		if (!Number.isInteger(postId) || postId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
 		const userId = getUserId(req);
 		const { liked } = req.body;
 
@@ -87,10 +91,14 @@ export const setLike = async (req: Request, res: Response) => {
 			return res.status(400).json({ message: 'El campo liked debe ser booleano.' });
 		}
 
-		const likes = await postService.setLike(postId, userId, liked);
-		res.json({ likes, likedByMe: liked });
+		const state = await postService.setLike(postId, userId, liked);
+		res.json(state);
 	} catch (err) {
 		Sentry.captureException(err);
+		if (err instanceof Error && /not found|no encontrado/i.test(err.message)) {
+			return res.status(404).json({ message: 'Post no encontrado.' });
+		}
+
 		res.status(500).json({ message: 'Error al actualizar like.' });
 	}
 };

@@ -27,6 +27,11 @@ export interface PostFeedReference {
   createdAt: Date;
 }
 
+export interface PostLikeState {
+  likes: number;
+  likedByMe: boolean;
+}
+
 const generatePostId = (): PostId => Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
 
 const parseDate = (value?: string | number | Date): Date =>
@@ -471,12 +476,12 @@ export class PostRepository {
     );
   }
 
-  async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+  async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
     const currentlyLiked = await this.userLiked(postId, userId);
     return this.setLike(postId, userId, !currentlyLiked);
   }
 
-  async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<number> {
+  async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<PostLikeState> {
     const transaction = liked
       ? new TransactWriteCommand({
           TransactItems: [
@@ -540,12 +545,40 @@ export class PostRepository {
       }
     }
 
-    const post = await this.findById(postId);
+    const post = await this.getPostLikeState(postId, userId);
     if (!post) {
       throw new Error('Post not found');
     }
 
-    return post.likes;
+    return post;
+  }
+
+  private async getPostLikeState(postId: PostId, userId: UserId): Promise<PostLikeState | null> {
+    const [postResult, likeResult] = await Promise.all([
+      ddbDocClient.send(
+        new GetCommand({
+          TableName: TABLES.FEED,
+          Key: { postId },
+          ConsistentRead: true,
+        })
+      ),
+      ddbDocClient.send(
+        new GetCommand({
+          TableName: TABLES.POST_LIKES,
+          Key: { postId, userId },
+          ConsistentRead: true,
+        })
+      ),
+    ]);
+
+    if (!postResult.Item || postResult.Item.is_deleted) {
+      return null;
+    }
+
+    return {
+      likes: Number(postResult.Item.likes ?? 0),
+      likedByMe: Boolean(likeResult.Item),
+    };
   }
 
   async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {

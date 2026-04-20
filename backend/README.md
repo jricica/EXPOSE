@@ -45,11 +45,13 @@
 - Idempotent API:
   - `PUT /api/posts/:id/like` with body `{ "liked": true|false }` is the canonical endpoint.
   - Repeating the same desired state does not duplicate likes or over-decrement counters.
+  - The response returns authoritative server state: `{ "likes": number, "likedByMe": boolean }`.
 - Consistency:
   - Like/unlike uses a single `TransactWrite` touching both tables.
   - `liked=true`: conditional `Put` in `POST_LIKES` + counter increment in `FEED`.
   - `liked=false`: conditional `Delete` in `POST_LIKES` + counter decrement in `FEED`.
   - This keeps per-user state and aggregate counter synchronized at transaction granularity.
+  - After transaction, API reads both records with `ConsistentRead` to return committed final state under retries and high concurrency.
 - Cost optimization:
   - No pre-read is required for the idempotent path; it attempts the target state directly.
   - Only one read (`findById`) is used to return the latest counter and validate post existence.

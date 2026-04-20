@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Comment, Post, PostId } from '../models/post.model';
 import { UserId } from '../models/user.model';
-import { postRepository, PostRepository } from '../repositories/post.repository';
+import { postRepository, PostLikeState, PostRepository } from '../repositories/post.repository';
 import { feedTimelineRepository, FeedTimelineRepository } from '../repositories/feed-timeline.repository';
 import { relationshipRepository, RelationshipRepository } from '../repositories/relationship.repository';
 import { REPORTS_THRESHOLD } from '../config/env';
@@ -211,7 +211,7 @@ export class PostService {
 		});
 	}
 
-	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+	async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
 		const post = await this.repository.findById(postId, userId);
 		if (!post) throw new Error('Post no encontrado');
 
@@ -219,10 +219,7 @@ export class PostService {
 		return this.repository.setLike(postId, userId, desiredLikeState);
 	}
 
-	async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<number> {
-		const post = await this.repository.findById(postId);
-		if (!post) throw new Error('Post no encontrado');
-
+	async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<PostLikeState> {
 		return this.repository.setLike(postId, userId, liked);
 	}
 
