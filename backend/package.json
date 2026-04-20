@@ -9,6 +9,7 @@
     "db:test": "ts-node src/test-connection.ts",
     "db:init": "ts-node src/init-db.ts",
     "db:seed": "ts-node src/seed.ts",
+    "feed:reconcile": "ts-node src/reconcile-feed.ts",
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

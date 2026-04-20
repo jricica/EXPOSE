@@ -17,12 +17,25 @@ export interface FeedTimelineReadInput {
   cursorPostId?: PostId;
 }
 
-interface FeedTimelineItem {
+export interface FeedTimelineItem {
   feedUserId: UserId;
   sk: string;
   postId: PostId;
   actorUserId: UserId;
   createdAt: string;
+}
+
+export interface FeedTimelineUpsertItem {
+  feedUserId: UserId;
+  postId: PostId;
+  actorUserId: UserId;
+  createdAt: Date;
+}
+
+export interface FeedTimelineReconcileInput {
+  feedUserId: UserId;
+  staleSortKeys: string[];
+  upserts: FeedTimelineUpsertItem[];
 }
 
 const MAX_TXN_ITEMS = 25;
@@ -51,6 +64,10 @@ const chunkArray = <T>(items: T[], chunkSize: number): T[][] => {
 };
 
 export class FeedTimelineRepository {
+  buildSortKey(createdAt: Date, postId: PostId): string {
+    return toTimelineSk(createdAt.toISOString(), postId);
+  }
+
   async fanOutPostCreated(input: FeedTimelineWriteInput): Promise<void> {
     const uniqueFeedUserIds = Array.from(
       new Set(input.feedUserIds.filter((userId) => Number.isInteger(userId) && userId > 0)),
@@ -192,6 +209,136 @@ export class FeedTimelineRepository {
     } while (lastKey && postIds.length < input.limit);
 
     return postIds;
+  }
+
+  async listEntries(feedUserId: UserId): Promise<FeedTimelineItem[]> {
+    const items: FeedTimelineItem[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+
+    do {
+      const result = await ddbDocClient.send(
+        new QueryCommand({
+          TableName: TABLES.FEED_TIMELINE,
+          KeyConditionExpression: 'feedUserId = :feedUserId',
+          ExpressionAttributeValues: {
+            ':feedUserId': feedUserId,
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+
+      if (result.Items) {
+        items.push(...(result.Items as FeedTimelineItem[]));
+      }
+
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastKey);
+
+    return items;
+  }
+
+  async upsertEntries(entries: FeedTimelineUpsertItem[]): Promise<void> {
+    const validEntries = entries.filter(
+      (entry) => Number.isInteger(entry.feedUserId) && entry.feedUserId > 0
+        && Number.isInteger(entry.actorUserId) && entry.actorUserId > 0,
+    );
+
+    if (validEntries.length === 0) {
+      return;
+    }
+
+    const chunks = chunkArray(validEntries, MAX_TXN_ITEMS);
+    for (const chunk of chunks) {
+      await this.executeWithRetry(() =>
+        ddbDocClient.send(
+          new TransactWriteCommand({
+            TransactItems: chunk.map((entry) => ({
+              Put: {
+                TableName: TABLES.FEED_TIMELINE,
+                Item: {
+                  feedUserId: entry.feedUserId,
+                  sk: toTimelineSk(entry.createdAt.toISOString(), entry.postId),
+                  postId: entry.postId,
+                  actorUserId: entry.actorUserId,
+                  createdAt: entry.createdAt.toISOString(),
+                },
+              },
+            })),
+          }),
+        ));
+    }
+  }
+
+  async deleteEntries(feedUserId: UserId, sortKeys: string[]): Promise<void> {
+    const uniqueSortKeys = Array.from(new Set(sortKeys.filter((key) => Boolean(key))));
+    if (uniqueSortKeys.length === 0) {
+      return;
+    }
+
+    const chunks = chunkArray(uniqueSortKeys, MAX_TXN_ITEMS);
+    for (const chunk of chunks) {
+      await this.executeWithRetry(() =>
+        ddbDocClient.send(
+          new TransactWriteCommand({
+            TransactItems: chunk.map((sk) => ({
+              Delete: {
+                TableName: TABLES.FEED_TIMELINE,
+                Key: {
+                  feedUserId,
+                  sk,
+                },
+              },
+            })),
+          }),
+        ));
+    }
+  }
+
+  async reconcileEntries(input: FeedTimelineReconcileInput): Promise<void> {
+    const uniqueSortKeys = Array.from(new Set(input.staleSortKeys.filter((key) => Boolean(key))));
+    const validUpserts = input.upserts.filter(
+      (entry) => Number.isInteger(entry.feedUserId) && entry.feedUserId > 0
+        && Number.isInteger(entry.actorUserId) && entry.actorUserId > 0,
+    );
+
+    const transactItems = [
+      ...validUpserts.map((entry) => ({
+        Put: {
+          TableName: TABLES.FEED_TIMELINE,
+          Item: {
+            feedUserId: entry.feedUserId,
+            sk: toTimelineSk(entry.createdAt.toISOString(), entry.postId),
+            postId: entry.postId,
+            actorUserId: entry.actorUserId,
+            createdAt: entry.createdAt.toISOString(),
+          },
+        },
+      })),
+      ...uniqueSortKeys.map((sk) => ({
+        Delete: {
+          TableName: TABLES.FEED_TIMELINE,
+          Key: {
+            feedUserId: input.feedUserId,
+            sk,
+          },
+        },
+      })),
+    ];
+
+    if (transactItems.length === 0) {
+      return;
+    }
+
+    const chunks = chunkArray(transactItems, MAX_TXN_ITEMS);
+    for (const chunk of chunks) {
+      await this.executeWithRetry(() =>
+        ddbDocClient.send(
+          new TransactWriteCommand({
+            TransactItems: chunk,
+          }),
+        ));
+    }
   }
 }
 
