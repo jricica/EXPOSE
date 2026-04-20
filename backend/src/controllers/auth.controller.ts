@@ -20,13 +20,17 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
+  const loginIdentifier = typeof req.body?.email === "string"
+    ? req.body.email
+    : req.body?.username;
+
   try {
     const response = await authService.login(req.body);
-    recordLoginSuccess(req);
+    recordLoginSuccess(req, loginIdentifier);
     res.json(response);
   } catch (err) {
     Sentry.captureException(err);
-    recordLoginFailure(req);
+    recordLoginFailure(req, loginIdentifier);
     const message = err instanceof Error ? err.message : "Error en el login";
     res.status(401).json({ message });
   }
