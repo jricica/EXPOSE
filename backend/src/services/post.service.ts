@@ -212,10 +212,18 @@ export class PostService {
 	}
 
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
+		const post = await this.repository.findById(postId, userId);
+		if (!post) throw new Error('Post no encontrado');
+
+		const desiredLikeState = !Boolean(post.likedByMe);
+		return this.repository.setLike(postId, userId, desiredLikeState);
+	}
+
+	async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<number> {
 		const post = await this.repository.findById(postId);
 		if (!post) throw new Error('Post no encontrado');
 
-		return await this.repository.toggleLike(postId, userId);
+		return this.repository.setLike(postId, userId, liked);
 	}
 
 	async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {

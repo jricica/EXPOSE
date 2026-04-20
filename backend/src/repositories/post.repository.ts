@@ -472,73 +472,68 @@ export class PostRepository {
   }
 
   async toggleLike(postId: PostId, userId: UserId): Promise<number> {
-    const existing = await ddbDocClient.send(
-      new GetCommand({
-        TableName: TABLES.POST_LIKES,
-        Key: { postId, userId },
-      })
-    );
+    const currentlyLiked = await this.userLiked(postId, userId);
+    return this.setLike(postId, userId, !currentlyLiked);
+  }
+
+  async setLike(postId: PostId, userId: UserId, liked: boolean): Promise<number> {
+    const transaction = liked
+      ? new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLES.POST_LIKES,
+                Item: {
+                  postId,
+                  userId,
+                  createdAt: new Date().toISOString(),
+                },
+                ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
+              },
+            },
+            {
+              Update: {
+                TableName: TABLES.FEED,
+                Key: { postId },
+                UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :one',
+                ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+                ExpressionAttributeNames: { '#likes': 'likes' },
+                ExpressionAttributeValues: {
+                  ':zero': 0,
+                  ':one': 1,
+                  ':true': true,
+                },
+              },
+            },
+          ],
+        })
+      : new TransactWriteCommand({
+          TransactItems: [
+            {
+              Delete: {
+                TableName: TABLES.POST_LIKES,
+                Key: { postId, userId },
+                ConditionExpression: 'attribute_exists(postId) AND attribute_exists(userId)',
+              },
+            },
+            {
+              Update: {
+                TableName: TABLES.FEED,
+                Key: { postId },
+                UpdateExpression: 'SET #likes = #likes - :one',
+                ConditionExpression: 'attribute_exists(postId) AND #likes >= :one AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+                ExpressionAttributeNames: { '#likes': 'likes' },
+                ExpressionAttributeValues: {
+                  ':one': 1,
+                  ':true': true,
+                },
+              },
+            },
+          ],
+        });
 
     try {
-      if (existing.Item) {
-        await ddbDocClient.send(
-          new TransactWriteCommand({
-            TransactItems: [
-              {
-                Delete: {
-                  TableName: TABLES.POST_LIKES,
-                  Key: { postId, userId },
-                  ConditionExpression: 'attribute_exists(postId) AND attribute_exists(userId)',
-                },
-              },
-              {
-                Update: {
-                  TableName: TABLES.FEED,
-                  Key: { postId },
-                  UpdateExpression: 'SET #likes = #likes - :one',
-                  ConditionExpression: 'attribute_exists(postId) AND #likes >= :one',
-                  ExpressionAttributeNames: { '#likes': 'likes' },
-                  ExpressionAttributeValues: {
-                    ':one': 1,
-                  },
-                },
-              },
-            ],
-          })
-        );
-      } else {
-        await ddbDocClient.send(
-          new TransactWriteCommand({
-            TransactItems: [
-              {
-                Put: {
-                  TableName: TABLES.POST_LIKES,
-                  Item: {
-                    postId,
-                    userId,
-                    createdAt: new Date().toISOString(),
-                  },
-                  ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
-                },
-              },
-              {
-                Update: {
-                  TableName: TABLES.FEED,
-                  Key: { postId },
-                  UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :one',
-                  ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
-                  ExpressionAttributeNames: { '#likes': 'likes' },
-                  ExpressionAttributeValues: {
-                    ':zero': 0,
-                    ':one': 1,
-                    ':true': true,
-                  },
-                },
-              },
-            ],
-          })
-        );
-      }
+      await ddbDocClient.send(transaction);
     } catch (error) {
       if (!isConditionalTransactionFailure(error)) {
         throw error;
@@ -546,7 +541,11 @@ export class PostRepository {
     }
 
     const post = await this.findById(postId);
-    return post?.likes ?? 0;
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    return post.likes;
   }
 
   async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
