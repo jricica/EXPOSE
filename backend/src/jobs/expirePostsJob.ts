@@ -1,9 +1,9 @@
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import * as Sentry from "@sentry/node";
 import { postRepository } from '../repositories/post.repository';
 import { EXPIRE_JOB_INTERVAL_MINUTES, EXPIRE_JOB_PHYSICAL_DELETE } from '../config/env';
 
-let task: cron.ScheduledTask | null = null;
+let task: ScheduledTask | null = null;
 
 export function startExpirePostsJob() {
   if (task) return;
