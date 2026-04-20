@@ -3,6 +3,7 @@ import authRoutes from './modules/auth/auth.routes';
 import followRoutes from './routes/follow.routes';
 import path from 'path';
 import uploadRoutes from './routes/upload.routes';
+import { UPLOAD_DIR } from './config/env';
 
 
 const app = express();
@@ -13,7 +14,7 @@ app.use('/api/auth', authRoutes);
 
 app.use('/follow', followRoutes);
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.resolve(UPLOAD_DIR)));
 
 app.use('/upload', uploadRoutes);
 
