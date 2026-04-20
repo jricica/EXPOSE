@@ -16,3 +16,7 @@ export interface AuthResponse {
     };
     authentication_token: string;
 }
+
+export interface AuthMeResponse {
+    user: User;
+}

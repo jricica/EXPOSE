@@ -1,5 +1,5 @@
-import { post } from "../../../services/api";
-import { AuthResponse } from "./auth.types";
+import { get, post } from "../../../services/api";
+import { AuthMeResponse, AuthResponse } from "./auth.types";
 
 export const authService = {
     async login(email: string, password: string): Promise<AuthResponse> {
@@ -7,6 +7,16 @@ export const authService = {
     },
 
     async register(username: string, email: string, password: string): Promise<AuthResponse> {
-        return await post<AuthResponse>("/auth/register", { username, email, password });
+
+        const user = await post<any>("/auth/register", { username, email, password });
+
+        if (!user.token) {
+            return await this.login(email, password);
+        }
+        return user;
+    },
+
+    async getMe(): Promise<AuthMeResponse> {
+        return await get<AuthMeResponse>("/auth/me");
     }
 };

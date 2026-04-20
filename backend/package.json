@@ -9,7 +9,7 @@
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",
     "db:init": "ts-node src/init-db.ts",
-    "db:seed": "ts-node src/seed.ts",
+    "db:seed": "prisma db seed",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:baseline": "prisma migrate resolve --applied 20260419221500_init",
     "feed:reconcile": "ts-node src/reconcile-feed.ts",
@@ -17,6 +17,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "prisma db seed"
     "prisma:migrate:baseline": "prisma migrate resolve --applied 20260420000000_init"
   },
   "dependencies": {
@@ -35,7 +36,6 @@
     "multer": "^2.1.1",
     "mysql-promise": "^5.0.0",
     "mysql2": "^3.16.3",
-    "prisma": "^6.17.1",
     "tslib": "^2.8.1",
     "uuid": "^13.0.0"
   },
@@ -48,6 +48,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^20.19.30",
     "@types/supertest": "^6.0.3",
     "babel-jest": "^30.2.0",
@@ -57,5 +58,8 @@
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "seed": "ts-node src/seed.ts"
   }
 }
