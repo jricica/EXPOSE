@@ -76,6 +76,7 @@ export class PostRepository {
           commentCount: 0,
           shareCount: 0,
           reportsCount: 0,
+          fanOutReady: false,
           is_deleted: data.is_deleted ?? false,
         },
         ConditionExpression: 'attribute_not_exists(postId)',
@@ -114,8 +115,14 @@ export class PostRepository {
 
   async findMany(filters: PostRepositoryFindManyFilters): Promise<Post[]> {
     const items: any[] = [];
-    const expressions: string[] = ['(is_deleted <> :true OR attribute_not_exists(is_deleted))'];
-    const expressionValues: Record<string, any> = { ':true': true };
+    const expressions: string[] = [
+      '(is_deleted <> :true OR attribute_not_exists(is_deleted))',
+      '(fanOutReady = :fanOutReady OR attribute_not_exists(fanOutReady))',
+    ];
+    const expressionValues: Record<string, any> = {
+      ':true': true,
+      ':fanOutReady': true,
+    };
 
     if (filters.expiresAfter) {
       expressions.push('expiresAt > :exp');
@@ -190,6 +197,42 @@ export class PostRepository {
         : {};
 
     return sliced.map((item) => mapItemToPost(item, likedMap[item.postId] ?? false));
+  }
+
+  async findByIds(postIds: PostId[], currentUserId?: UserId): Promise<Post[]> {
+    const orderedUniquePostIds = Array.from(new Set(postIds.map((id) => Number(id))));
+    if (orderedUniquePostIds.length === 0) {
+      return [];
+    }
+
+    const response = await ddbDocClient.send(
+      new BatchGetCommand({
+        RequestItems: {
+          [TABLES.FEED]: {
+            Keys: orderedUniquePostIds.map((postId) => ({ postId })),
+          },
+        },
+      }),
+    );
+
+    const items = (response.Responses?.[TABLES.FEED] ?? [])
+      .filter((item) => !item.is_deleted)
+      .filter((item) => item.fanOutReady !== false);
+    const itemById = new Map<number, any>();
+
+    for (const item of items) {
+      itemById.set(Number(item.postId), item);
+    }
+
+    const likedMap =
+      currentUserId
+        ? await this.getLikedMap(orderedUniquePostIds, currentUserId)
+        : {};
+
+    return orderedUniquePostIds
+      .map((postId) => itemById.get(postId))
+      .filter((item): item is any => Boolean(item))
+      .map((item) => mapItemToPost(item, likedMap[Number(item.postId)] ?? false));
   }
 
   private async collectAllQueries(input: any, buffer: any[]) {
@@ -329,6 +372,20 @@ export class PostRepository {
     }
 
     return count;
+  }
+
+  async markFanOutReady(id: PostId): Promise<void> {
+    await ddbDocClient.send(
+      new UpdateCommand({
+        TableName: TABLES.FEED,
+        Key: { postId: id },
+        UpdateExpression: 'SET fanOutReady = :ready',
+        ExpressionAttributeValues: {
+          ':ready': true,
+        },
+        ConditionExpression: 'attribute_exists(postId)',
+      })
+    );
   }
 
   async updateExpiresAt(id: PostId, expiresAt: Date): Promise<void> {
