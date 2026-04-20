@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPost, listPosts, toggleLike, getPost, deletePost, addComment, listComments, sharePost, reportPost } from "../controllers/post.controller";
+import { createPost, listPosts, toggleLike, setLike, getPost, deletePost, addComment, listComments, sharePost, reportPost } from "../controllers/post.controller";
 import { authMiddleware, optionalAuthMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
@@ -7,6 +7,7 @@ const router = Router();
 router.post("/posts", authMiddleware, createPost);
 router.get("/posts", optionalAuthMiddleware, listPosts);
 router.post("/posts/:id/like", authMiddleware, toggleLike);
+router.put("/posts/:id/like", authMiddleware, setLike);
 router.post("/posts/:id/comments", authMiddleware, addComment);
 router.get("/posts/:id/comments", optionalAuthMiddleware, listComments);
 router.post("/posts/:id/share", authMiddleware, sharePost);

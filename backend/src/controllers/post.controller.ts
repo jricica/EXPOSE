@@ -77,6 +77,24 @@ export const toggleLike = async (req: Request, res: Response) => {
 	}
 };
 
+export const setLike = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		const userId = getUserId(req);
+		const { liked } = req.body;
+
+		if (typeof liked !== 'boolean') {
+			return res.status(400).json({ message: 'El campo liked debe ser booleano.' });
+		}
+
+		const likes = await postService.setLike(postId, userId, liked);
+		res.json({ likes, likedByMe: liked });
+	} catch (err) {
+		Sentry.captureException(err);
+		res.status(500).json({ message: 'Error al actualizar like.' });
+	}
+};
+
 export const addComment = async (req: Request, res: Response) => {
 	try {
 		const postId = Number(req.params.id);
