@@ -1,39 +1,63 @@
-type MessageHandler = (data: any) => void;
+type RealtimeEvent =
+  | { type: 'MESSAGE'; payload: any }
+  | { type: 'NOTIFICATION'; payload: any };
+
+type MessageHandler = (data: RealtimeEvent) => void;
 
 class RealtimeService {
   private socket: WebSocket | null = null;
-  private handlers: MessageHandler[] = [];
+  private handlers: Set<MessageHandler> = new Set();
 
   connect(url: string) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    if (this.socket) {
+      this.socket.close();
+    }
+
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
-      console.log("Realtime connected");
     };
 
     this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      this.handlers.forEach((handler) => handler(data));
+      try {
+        const data: RealtimeEvent = JSON.parse(event.data);
+        this.handlers.forEach((handler) => handler(data));
+      } catch (error) {
+        console.error('Invalid realtime message', error);
+      }
     };
 
     this.socket.onclose = () => {
-      console.log("Realtime disconnected");
+      this.socket = null;
+    };
+
+    this.socket.onerror = (error) => {
+      console.error('Realtime error', error);
     };
   }
 
-  send(data: any) {
+  send(data: unknown) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(data));
     }
   }
 
   subscribe(handler: MessageHandler) {
-    this.handlers.push(handler);
+    this.handlers.add(handler);
+
+    return () => {
+      this.handlers.delete(handler);
+    };
   }
 
   disconnect() {
     this.socket?.close();
     this.socket = null;
+    this.handlers.clear();
   }
 }
 
