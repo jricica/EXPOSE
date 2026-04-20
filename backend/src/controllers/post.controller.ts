@@ -69,8 +69,8 @@ export const toggleLike = async (req: Request, res: Response) => {
 		const postId = Number(req.params.id);
 		const userId = getUserId(req);
 
-		const likes = await postService.toggleLike(postId, userId);
-		res.json({ likes });
+		const state = await postService.toggleLike(postId, userId);
+		res.json(state);
 	} catch (err) {
 		Sentry.captureException(err);
 		res.status(500).json({ message: "Error al procesar like." });
