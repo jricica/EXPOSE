@@ -45,8 +45,8 @@ const registerErrorResponse = (err: unknown): { status: number; body: AuthErrorP
 
   const uniqueTargets = getPrismaUniqueTargets(err);
   if (uniqueTargets.length > 0) {
-    const hasEmail = uniqueTargets.includes("email");
-    const hasUsername = uniqueTargets.includes("username");
+    const hasEmail = uniqueTargets.some((t) => t.toLowerCase().includes("email"));
+    const hasUsername = uniqueTargets.some((t) => t.toLowerCase().includes("username"));
 
     if (hasEmail && !hasUsername) {
       return {
