@@ -44,7 +44,7 @@ export const INDEXES = {
 
 export const DYNAMO_TABLES = {
   socialRelationships: process.env.DYNAMO_RELATIONSHIPS_TABLE || TABLES.RELATIONSHIPS,
-  feedEvents: process.env.DYNAMO_FEED_TABLE || 'feed_events',
+  feedEvents: process.env.DYNAMO_FEED_TABLE || TABLES.FEED,
 } as const;
 
 export const DYNAMO_PREFIXES = {

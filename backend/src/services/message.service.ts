@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Message, ConversationId } from '../models/message.model';
 import { UserId } from '../models/user.model';
 import { messageRepository, MessageRepository } from '../repositories/message.repository';
@@ -16,7 +16,7 @@ export class MessageService {
     const convId = conversationId || buildConversationId(senderId, receiverId);
     const message: Message = {
       conversationId: convId,
-      messageId: `${Date.now()}#${uuidv4()}`,
+      messageId: `${Date.now()}#${randomUUID()}`,
       senderId,
       receiverId,
       content: content.trim(),
