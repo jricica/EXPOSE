@@ -4,18 +4,21 @@ const MIN_PASSWORD_LENGTH = 10;
 const MAX_PASSWORD_LENGTH = 72; // bcrypt only uses the first 72 bytes
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 const WEAK_PASSWORDS = new Set([
-  "12345678",
-  "123456789",
-  "1234567890",
-  "password",
-  "password123",
-  "qwerty123",
-  "qwertyuiop",
-  "abc12345",
-  "letmein",
-  "admin123",
-  "welcome123",
-  "iloveyou",
+  "password1!",
+  "Password1!",
+  "Admin123!",
+  "Welcome1!",
+  "Qwerty123!",
+  "Letmein1!",
+  "Iloveyou1!",
+  "Abc12345!",
+  "Summer23!",
+  "Winter23!",
+  "Spring23!",
+  "Hello123!",
+  "Dragon1!",
+  "Master1!",
+  "Shadow1!",
 ]);
 
 interface PasswordValidationContext {
