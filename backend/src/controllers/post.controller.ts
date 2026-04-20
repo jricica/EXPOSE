@@ -168,6 +168,36 @@ export const reportComment = async (req: Request, res: Response) => {
 	}
 };
 
+export const deleteComment = async (req: Request, res: Response) => {
+	try {
+		const postId = Number(req.params.id);
+		if (!Number.isInteger(postId) || postId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
+		const rawCommentId = req.params.commentId;
+		const commentId = Array.isArray(rawCommentId) ? rawCommentId[0] : rawCommentId;
+		if (!commentId) {
+			return res.status(400).json({ message: 'commentId inválido.' });
+		}
+
+		const userId = getUserId(req);
+		await postService.deleteComment(postId, commentId, userId);
+		res.status(204).send();
+	} catch (err) {
+		Sentry.captureException(err);
+		if (err instanceof Error && /no autorizado|forbidden|unauthorized/i.test(err.message)) {
+			return res.status(403).json({ message: err.message });
+		}
+
+		if (err instanceof Error && /no encontrado|not found/i.test(err.message)) {
+			return res.status(404).json({ message: err.message });
+		}
+
+		res.status(400).json({ message: err instanceof Error ? err.message : 'Error al eliminar comentario.' });
+	}
+};
+
 export const sharePost = async (req: Request, res: Response) => {
 	try {
 		const postId = Number(req.params.id);

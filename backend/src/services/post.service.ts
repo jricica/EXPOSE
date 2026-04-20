@@ -265,6 +265,28 @@ export class PostService {
 		};
 	}
 
+	async deleteComment(postId: PostId, commentId: string, actorUserId: UserId): Promise<void> {
+		const post = await this.repository.findById(postId);
+		if (!post) {
+			throw new Error('Post no encontrado');
+		}
+
+		const comment = await this.repository.findCommentById(postId, commentId);
+		if (!comment) {
+			throw new Error('Comentario no encontrado');
+		}
+
+		const canDelete = comment.userId === actorUserId || post.userId === actorUserId;
+		if (!canDelete) {
+			throw new Error('No autorizado para eliminar este comentario');
+		}
+
+		const deleted = await this.repository.deleteComment(postId, commentId);
+		if (!deleted) {
+			throw new Error('Comentario no encontrado');
+		}
+	}
+
 	async sharePost(postId: PostId, userId: UserId): Promise<number> {
 		const post = await this.repository.findById(postId);
 		if (!post) throw new Error('Post no encontrado');

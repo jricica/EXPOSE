@@ -768,7 +768,22 @@ export class PostRepository {
     return mapItemToComment(refreshed.Item);
   }
 
-  async deleteComment(postId: PostId, commentId: string): Promise<void> {
+  async findCommentById(postId: PostId, commentId: string): Promise<Comment | null> {
+    const result = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLES.POST_COMMENTS,
+        Key: { postId, commentId },
+      })
+    );
+
+    if (!result.Item) {
+      return null;
+    }
+
+    return mapItemToComment(result.Item);
+  }
+
+  async deleteComment(postId: PostId, commentId: string): Promise<boolean> {
     try {
       await ddbDocClient.send(
         new TransactWriteCommand({
@@ -794,10 +809,13 @@ export class PostRepository {
           ],
         })
       );
+      return true;
     } catch (error) {
-      if (!isConditionalTransactionFailure(error)) {
-        throw error;
+      if (isConditionalTransactionFailure(error)) {
+        return false;
       }
+
+      throw error;
     }
   }
 
