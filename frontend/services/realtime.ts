@@ -1,15 +1,49 @@
+type MessageEventPayload = {
+  id: string;
+  content: string;
+};
+
+type NotificationPayload = {
+  message: string;
+};
+
 type RealtimeEvent =
-  | { type: 'MESSAGE'; payload: any }
-  | { type: 'NOTIFICATION'; payload: any };
+  | { type: 'MESSAGE'; payload: MessageEventPayload }
+  | { type: 'NOTIFICATION'; payload: NotificationPayload };
 
 type MessageHandler = (data: RealtimeEvent) => void;
+
+const isValidEvent = (data: any): data is RealtimeEvent => {
+  if (!data || typeof data !== 'object') return false;
+
+  if (data.type === 'MESSAGE') {
+    return (
+      data.payload &&
+      typeof data.payload.id === 'string' &&
+      typeof data.payload.content === 'string'
+    );
+  }
+
+  if (data.type === 'NOTIFICATION') {
+    return (
+      data.payload &&
+      typeof data.payload.message === 'string'
+    );
+  }
+
+  return false;
+};
 
 class RealtimeService {
   private socket: WebSocket | null = null;
   private handlers: Set<MessageHandler> = new Set();
 
   connect(url: string) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+    if (
+      this.socket &&
+      (this.socket.readyState === WebSocket.OPEN ||
+        this.socket.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
@@ -19,15 +53,16 @@ class RealtimeService {
 
     this.socket = new WebSocket(url);
 
-    this.socket.onopen = () => {
-    };
-
     this.socket.onmessage = (event) => {
       try {
-        const data: RealtimeEvent = JSON.parse(event.data);
-        this.handlers.forEach((handler) => handler(data));
-      } catch (error) {
-        console.error('Invalid realtime message', error);
+        const parsed = JSON.parse(event.data);
+
+        if (!isValidEvent(parsed)) {
+          return;
+        }
+
+        this.handlers.forEach((handler) => handler(parsed));
+      } catch {
       }
     };
 
@@ -35,8 +70,7 @@ class RealtimeService {
       this.socket = null;
     };
 
-    this.socket.onerror = (error) => {
-      console.error('Realtime error', error);
+    this.socket.onerror = () => {
     };
   }
 
