@@ -65,6 +65,11 @@ async function initDb() {
       await connection.query('CREATE INDEX idx_posts_createdAt ON posts(createdAt)');
     }
 
+    const [createdAtIdIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_createdAt_id"');
+    if ((createdAtIdIdx as any[]).length === 0) {
+      await connection.query('CREATE INDEX idx_posts_createdAt_id ON posts(createdAt, id)');
+    }
+
     const [expiresAtIdx] = await connection.query('SHOW INDEX FROM posts WHERE Key_name = "idx_posts_expiresAt"');
     if ((expiresAtIdx as any[]).length === 0) {
       await connection.query('CREATE INDEX idx_posts_expiresAt ON posts(expiresAt)');
@@ -104,6 +109,19 @@ async function initDb() {
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
+
+        // Tabla de follows
+    await connection.query(`
+  CREATE TABLE IF NOT EXISTS followers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    follower_id INT NOT NULL,
+    following_id INT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_follow (follower_id, following_id),
+    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB;
+`);
 
     console.log(`✅ Base de datos "${dbName}" y tablas aseguradas.`);
 
