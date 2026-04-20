@@ -7,9 +7,15 @@ export interface Post {
   userId: UserId;
   content: string;
   media_url?: string;
+  repostOfPostId?: PostId;
+  originalAuthorId?: UserId;
+  rootPostId?: PostId;
   createdAt: Date;
   expiresAt: Date;
   likes: number;
+  commentCount?: number;
+  shareCount?: number;
+  reportsCount?: number;
   likedByMe?: boolean;
   is_deleted?: boolean;
 }
@@ -21,5 +27,38 @@ export interface LikeRecord {
   id: number;
   postId: PostId;
   userId: UserId;
+  createdAt: Date;
+}
+
+export interface Comment {
+  commentId: string;
+  postId: PostId;
+  userId: UserId;
+  content: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  moderationStatus: 'active' | 'hidden';
+  reportsCount: number;
+  moderatedAt?: Date;
+  moderationReason?: string;
+}
+
+export interface CommentListQuery {
+  limit: number;
+  cursorCommentId?: string;
+}
+
+export interface PaginatedComments {
+  comments: Comment[];
+  pagination: {
+    limit: number;
+    nextCursorCommentId: string | null;
+  };
+}
+
+export interface ShareRecord {
+  postId: PostId;
+  userId: UserId;
+  repostPostId?: PostId;
   createdAt: Date;
 }
