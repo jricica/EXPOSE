@@ -27,25 +27,25 @@ export interface LoginResponse {
 
 export class AuthService {
   async register(input: RegisterInput): Promise<Omit<User, 'passwordHash'>> {
-    console.log("Registering user:", { username: input.username, email: input.email });
+    Sentry.captureMessage(`Registering user: ${JSON.stringify({ username: input.username, email: input.email })}`, 'info');
     const username = validateUsername(input.username);
     const email = validateEmail(input.email);
     validatePassword(input.password);
 
     const existing = await UserRepository.findByEmail(email);
     if (existing) {
-      console.log("Registration failed: Email already exists", email);
+      Sentry.captureMessage(`Registration failed: Email already exists ${email}`, 'info');
       throw new Error("El email ya está registrado");
     }
 
     const passwordHash = await bcrypt.hash(input.password, 10);
-    console.log("Password hashed successfully");
+    Sentry.captureMessage("Password hashed successfully", 'info');
     const userId = await UserRepository.create({
       username,
       email,
       passwordHash,
     });
-    console.log("User created in DB with ID:", userId);
+    Sentry.captureMessage(`User created in DB with ID: ${userId}`, 'info');
 
     const user = await UserRepository.findById(userId);
     if (!user) throw new Error("Error al crear usuario");

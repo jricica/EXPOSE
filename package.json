@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "mysql2": "^3.17.0"
+    "mysql2": "^3.17.0",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11"
   }
 }

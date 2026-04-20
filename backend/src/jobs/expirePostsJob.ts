@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import * as Sentry from "@sentry/node";
 import { postRepository } from '../repositories/post.repository';
 import { EXPIRE_JOB_INTERVAL_MINUTES, EXPIRE_JOB_PHYSICAL_DELETE } from '../config/env';
 
@@ -14,15 +15,15 @@ export function startExpirePostsJob() {
     try {
       const affected = await postRepository.markExpiredPosts(EXPIRE_JOB_PHYSICAL_DELETE);
       if (affected > 0) {
-        console.log(`ExpireJob: processed ${affected} posts (physicalDelete=${EXPIRE_JOB_PHYSICAL_DELETE})`);
+        Sentry.captureMessage(`ExpireJob: processed ${affected} posts (physicalDelete=${EXPIRE_JOB_PHYSICAL_DELETE})`, 'info');
       }
     } catch (err) {
-      console.error('ExpireJob error', err);
+      Sentry.captureException(err);
     }
   });
 
   task.start();
-  console.log(`Expire job started: interval ${minutes} minute(s)`);
+  Sentry.captureMessage(`Expire job started: interval ${minutes} minute(s)`, 'info');
 }
 
 export function stopExpirePostsJob() {
