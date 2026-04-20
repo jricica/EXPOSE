@@ -1,7 +1,7 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_BUCKET_NAME } from '../config/aws';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as Sentry from '@sentry/node';
 
 export class StorageService {
@@ -14,7 +14,7 @@ export class StorageService {
     }
 
     const fileExtension = path.extname(file.originalname);
-    const fileName = `${uuidv4()}${fileExtension}`;
+    const fileName = `${randomUUID()}${fileExtension}`;
     const key = `posts/${fileName}`;
 
     const command = new PutObjectCommand({

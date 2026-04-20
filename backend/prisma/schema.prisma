@@ -12,28 +12,28 @@ model User {
   username     String     @unique @db.VarChar(50)
   email        String     @unique @db.VarChar(255)
   passwordHash String     @db.VarChar(255)
-  bio          String?    @db.Text
-  displayName  String?    @map("display_name") @db.VarChar(100)
-  avatarUrl    String?    @map("avatar_url") @db.Text
   lastLogin    DateTime?  @db.DateTime(0)
   createdAt    DateTime   @default(now()) @db.DateTime(0)
+  bio          String?    @db.Text
+  display_name String?    @db.VarChar(100)
+  avatar_url   String?    @db.Text
   posts        Post[]
-  postLikes    PostLike[]
+  post_likes   PostLike[]
 
   @@map("users")
 }
 
 model Post {
-  id        Int        @id @default(autoincrement())
-  userId    Int
-  content   String     @db.Text
-  mediaUrl  String?    @map("media_url") @db.Text
-  createdAt DateTime   @default(now()) @db.DateTime(0)
-  expiresAt DateTime   @db.DateTime(0)
-  likes     Int        @default(0)
-  isDeleted Boolean    @map("is_deleted") @default(false) @db.TinyInt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postLikes PostLike[]
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  content    String     @db.Text
+  media_url  String?    @db.Text
+  createdAt  DateTime   @default(now()) @db.DateTime(0)
+  expiresAt  DateTime   @db.DateTime(0)
+  likes      Int        @default(0)
+  is_deleted Boolean    @default(false) @db.TinyInt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post_likes PostLike[]
 
   @@index([createdAt], map: "idx_posts_createdAt")
   @@index([expiresAt], map: "idx_posts_expiresAt")
