@@ -67,12 +67,20 @@ export const listPosts = async (req: Request, res: Response) => {
 export const toggleLike = async (req: Request, res: Response) => {
 	try {
 		const postId = Number(req.params.id);
+		if (!Number.isInteger(postId) || postId <= 0) {
+			return res.status(400).json({ message: 'ID de post inválido.' });
+		}
+
 		const userId = getUserId(req);
 
 		const state = await postService.toggleLike(postId, userId);
 		res.json(state);
 	} catch (err) {
 		Sentry.captureException(err);
+		if (err instanceof Error && /not found|no encontrado/i.test(err.message)) {
+			return res.status(404).json({ message: 'Post no encontrado.' });
+		}
+
 		res.status(500).json({ message: "Error al procesar like." });
 	}
 };
