@@ -31,3 +31,10 @@ export const COMMENT_REPORTS_THRESHOLD = (() => {
   return Number.isFinite(n) && n > 0 ? n : 3;
 })();
 
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
+
+export const MAX_FILE_SIZE = (() => {
+  const raw = process.env.MAX_FILE_SIZE;
+  const n = raw ? Number(raw) : 5 * 1024 * 1024; // 5MB
+  return Number.isFinite(n) && n > 0 ? n : 5 * 1024 * 1024;
+})();
