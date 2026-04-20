@@ -12,7 +12,6 @@
     "db:seed": "ts-node src/seed.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:baseline": "prisma migrate resolve --applied 20260419221500_init",
-    "test": "jest"
     "feed:reconcile": "ts-node src/reconcile-feed.ts",
     "test": "jest",
     "prisma:generate": "prisma generate",
