@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { setToken as setApiToken, setUnauthorizedHandler } from '../../../services/api';
+import { authService } from './auth.service';
 
 type AuthUser = {
   id: number;
@@ -43,22 +44,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
+    let active = true;
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    const storedUser = localStorage.getItem('auth_user');
 
-    setTokenState(storedToken);
-    setApiToken(storedToken);
+    const bootstrapAuth = async () => {
+      if (!storedToken) {
+        if (!active) return;
+        setTokenState(null);
+        setUser(null);
+        localStorage.removeItem('auth_user');
+        setApiToken(null);
+        return;
+      }
 
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+      setTokenState(storedToken);
+      setApiToken(storedToken);
+
+      try {
+        const response = await authService.getMe();
+        if (!active) return;
+        setUser(response.user);
+        localStorage.setItem('auth_user', JSON.stringify(response.user));
+      } catch {
+        if (!active) return;
+        setTokenState(null);
+        setUser(null);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem('auth_user');
+        setApiToken(null);
+      }
+    };
 
     setUnauthorizedHandler(() => {
       logout(false);
       redirectToLogin();
     });
 
-    return () => setUnauthorizedHandler(null);
+    void bootstrapAuth();
+
+    return () => {
+      active = false;
+      setUnauthorizedHandler(null);
+    };
   }, []);
 
   const login = (newToken: string, userData: AuthUser) => {
