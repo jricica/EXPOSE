@@ -5,7 +5,14 @@ import crypto from 'crypto';
 import { UPLOAD_DIR, MAX_FILE_SIZE } from '../config/env';
 
 // Tipos permitidos
-export const allowedMimeTypes = ['image/jpeg', 'image/png'];
+export const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Mapeo seguro de MIME → extensión
+const mimeToExtension: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
 
 // Asegurar que el directorio exista
 const uploadPath = path.resolve(UPLOAD_DIR);
@@ -22,14 +29,17 @@ const fileFilter: multer.Options['fileFilter'] = (req, file, cb) => {
 };
 
 // Storage seguro
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+const storage: multer.StorageEngine = multer.diskStorage({
+    destination: (req, file, cb) => {
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = mimeToExtension[file.mimetype];
 
-    // Generar nombre seguro (no predecible)
+    if (!ext) {
+      return cb(new Error('Extensión no soportada'));
+    }
+
     const randomName = crypto.randomBytes(16).toString('hex');
 
     cb(null, `${randomName}${ext}`);
