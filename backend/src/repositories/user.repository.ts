@@ -1,6 +1,13 @@
 import { User, UserId, CreateUserInput } from "../models/user.model";
 import prisma from "../lib/prisma";
 
+export interface PublicUserProfile {
+    id: UserId;
+    username: string;
+    display_name?: string;
+    avatar_url?: string;
+}
+
 export class UserRepository {
 
     static async findById(id: UserId): Promise<User | null> {
@@ -15,6 +22,29 @@ export class UserRepository {
             where: { email }
         });
         return user as User | null;
+    }
+
+    static async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
+        const uniqueIds = Array.from(new Set(ids)).filter((id) => Number.isInteger(id) && id > 0);
+        if (uniqueIds.length === 0) {
+            return [];
+        }
+
+        const users = await prisma.user.findMany({
+            where: {
+                id: {
+                    in: uniqueIds,
+                },
+            },
+            select: {
+                id: true,
+                username: true,
+                display_name: true,
+                avatar_url: true,
+            },
+        });
+
+        return users as PublicUserProfile[];
     }
 
     static async create(data: CreateUserInput): Promise<UserId> {
@@ -71,6 +101,10 @@ export class UserRepository {
 
     async findByEmail(email: string): Promise<User | null> {
         return UserRepository.findByEmail(email);
+    }
+
+    async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
+        return UserRepository.findPublicByIds(ids);
     }
 
     async create(data: CreateUserInput): Promise<UserId> {

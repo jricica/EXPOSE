@@ -30,7 +30,7 @@ export interface PostListQuery {
 }
 
 export interface PaginatedPosts {
-	posts: Post[];
+	posts: FeedPost[];
 	pagination: {
 		limit: number;
 		nextCursor: {
@@ -38,6 +38,22 @@ export interface PaginatedPosts {
 			cursorPostId: PostId;
 		} | null;
 	};
+}
+
+export interface FeedPost extends Post {
+	author?: {
+		id: UserId;
+		username: string;
+		displayName?: string;
+		avatarUrl?: string;
+	};
+}
+
+interface FeedAuthorProfile {
+	id: UserId;
+	username: string;
+	display_name?: string;
+	avatar_url?: string;
 }
 
 export class PostService {
@@ -77,11 +93,12 @@ export class PostService {
 		};
 
 		const posts = await this.repository.findMany(filters);
+		const enrichedPosts = await this.enrichPostsWithDomainMetadata(posts);
 
 		let nextCursor: { cursorCreatedAt: string; cursorPostId: PostId } | null = null;
 
-		if (posts.length > limit) {
-			const last = posts.pop();
+		if (enrichedPosts.length > limit) {
+			const last = enrichedPosts.pop();
 			if (last) {
 				nextCursor = {
 					cursorCreatedAt: last.createdAt instanceof Date
@@ -93,12 +110,54 @@ export class PostService {
 		}
 
 		return {
-			posts,
+			posts: enrichedPosts,
 			pagination: {
 				limit,
 				nextCursor,
 			},
 		};
+	}
+
+	private async enrichPostsWithDomainMetadata(posts: Post[]): Promise<FeedPost[]> {
+		if (posts.length === 0) {
+			return [];
+		}
+
+		if (!process.env.DATABASE_URL) {
+			return posts;
+		}
+
+		let users: FeedAuthorProfile[] = [];
+
+		try {
+			const { userRepository } = await import('../repositories/user.repository');
+			const userIds = posts.map((post) => post.userId);
+			users = await userRepository.findPublicByIds(userIds) as FeedAuthorProfile[];
+		} catch {
+			return posts;
+		}
+
+		const authorById = new Map<number, FeedAuthorProfile>();
+
+		for (const user of users) {
+			authorById.set(user.id, user);
+		}
+
+		return posts.map((post) => {
+			const author = authorById.get(post.userId);
+
+			return {
+				...post,
+				author: author
+					? {
+						id: author.id,
+						username: author.username,
+						displayName: author.display_name,
+						avatarUrl: author.avatar_url,
+					}
+					: undefined,
+			};
+		});
 	}
 
 	async toggleLike(postId: PostId, userId: UserId): Promise<number> {
