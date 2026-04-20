@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "dev": "nodemon --watch src --watch .env --ext ts,env --exec ts-node src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",

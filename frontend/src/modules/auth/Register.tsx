@@ -2,32 +2,48 @@ import { useState } from "react";
 import "./Login.css";
 import { authService } from "./auth.service";
 import { useAuth } from "./AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface RegisterProps {
   onBack: () => void;
 }
 
 const Register = ({ onBack }: RegisterProps) => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     if (!username || !email || !password || !confirmPassword) {
       setError("Todos los campos son obligatorios.");
+      setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden.");
+      setLoading(false);
       return;
     }
 
-    setError("");
+    try {
+      setError("");
+      const response = await authService.register(username, email, password);
+      login(response.token.accessToken, response.user);
+      navigate("/profile", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo registrar el usuario.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,7 +93,9 @@ const Register = ({ onBack }: RegisterProps) => {
 
           {error && <p style={{ color: "#ff4444", fontSize: "0.8rem", margin: "10px 0" }}>{error}</p>}
 
-          <button className="login-button">Register</button>
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? "Registering..." : "Register"}
+          </button>
         </form>
 
         <div className="login-footer">

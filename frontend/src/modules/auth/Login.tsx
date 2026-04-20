@@ -1,21 +1,46 @@
 import React, { useState } from "react";
 import "./Login.css";
-import Register from "./Register";
 import { authService } from "./auth.service";
 import { useAuth } from "./AuthContext";
+import { useNavigate } from "react-router-dom";
 
-const Login: React.FC = () => {
+type LoginProps = {
+  onSwitchToRegister: () => void;
+};
+
+const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await authService.login(email, password);
+      login(response.token.accessToken, response.user);
+      navigate("/profile", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="login-container">
       <div className="login-card">
         <h1 className="login-title">EXPOSE</h1>
 
-        <p className="login-subtitle">
+        <p className="login-subtitle">Share the moment. Disappear.</p>
         <div className="login-divider" />
-          Share the moment. Disappear.
-        </p>
 
-        <form className="login-form">
+        <form className="login-form" onSubmit={handleSubmit}>
           <input
             type="text"
             placeholder="Username or email"
@@ -29,10 +54,15 @@ const Login: React.FC = () => {
             type="password"
             placeholder="Password"
             className="login-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
           />
 
-          <button type="submit" className="login-button">
-            Enter
+          {error && <p style={{ color: "#ff8a8a", fontSize: "0.85rem", margin: 0 }}>{error}</p>}
+
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? "Entering..." : "Enter"}
           </button>
         </form>
 
@@ -40,8 +70,7 @@ const Login: React.FC = () => {
           <button
             type="button"
             className="login-link"
-            onClick={() => setIsLogin(false)}
-            disabled={loading}
+            onClick={onSwitchToRegister}
           >
             Don't have an account? Register
           </button>
