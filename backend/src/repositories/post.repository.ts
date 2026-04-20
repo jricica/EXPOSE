@@ -21,6 +21,12 @@ export interface PostRepositoryFindManyFilters {
   cursorPostId?: PostId;
 }
 
+export interface PostFeedReference {
+  postId: PostId;
+  userId: UserId;
+  createdAt: Date;
+}
+
 const generatePostId = (): PostId => Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
 
 const parseDate = (value?: string | number | Date): Date =>
@@ -233,6 +239,57 @@ export class PostRepository {
       .map((postId) => itemById.get(postId))
       .filter((item): item is any => Boolean(item))
       .map((item) => mapItemToPost(item, likedMap[Number(item.postId)] ?? false));
+  }
+
+  async listVisiblePostReferencesByAuthors(authorIds: UserId[], expiresAfter: Date): Promise<PostFeedReference[]> {
+    const uniqueAuthorIds = Array.from(new Set(authorIds.filter((id) => Number.isInteger(id) && id > 0)));
+    if (uniqueAuthorIds.length === 0) {
+      return [];
+    }
+
+    const references: PostFeedReference[] = [];
+    const expiresAfterIso = expiresAfter.toISOString();
+
+    for (const authorId of uniqueAuthorIds) {
+      let lastKey: Record<string, unknown> | undefined;
+
+      do {
+        const result = await ddbDocClient.send(
+          new QueryCommand({
+            TableName: TABLES.FEED,
+            IndexName: INDEXES.FEED_USER_CREATED_AT,
+            KeyConditionExpression: 'userId = :uid',
+            FilterExpression: [
+              '(is_deleted <> :true OR attribute_not_exists(is_deleted))',
+              '(fanOutReady = :fanOutReady OR attribute_not_exists(fanOutReady))',
+              'expiresAt > :exp',
+            ].join(' AND '),
+            ExpressionAttributeValues: {
+              ':uid': authorId,
+              ':true': true,
+              ':fanOutReady': true,
+              ':exp': expiresAfterIso,
+            },
+            ScanIndexForward: false,
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+
+        if (result.Items) {
+          for (const item of result.Items) {
+            references.push({
+              postId: Number(item.postId),
+              userId: Number(item.userId),
+              createdAt: parseDate(item.createdAt),
+            });
+          }
+        }
+
+        lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+      } while (lastKey);
+    }
+
+    return references;
   }
 
   private async collectAllQueries(input: any, buffer: any[]) {
