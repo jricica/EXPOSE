@@ -22,6 +22,15 @@ export interface User {
     lastLogin: Date | null;
 }
 
+export type RelationshipType = 'follow' | 'blocked' | 'friend';
+
+export interface UserRelationship {
+    userId: UserId;
+    targetUserId: UserId;
+    relationshipType: RelationshipType;
+    createdAt: Date;
+}
+
 /**
  * Crea el usuario
  */

@@ -3,6 +3,8 @@ import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 import uploadRoutes from './routes/upload.routes';
+import relationshipRoutes from './routes/relationship.routes';
+import messageRoutes from './routes/message.routes';
 
 import path from 'path';
 
@@ -22,6 +24,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', postRoutes);
+app.use('/api', relationshipRoutes);
+app.use('/api', messageRoutes);
 
 // Serve the frontend for any non-API routes (SPA support)
 app.use((req: Request, res: Response, next) => {

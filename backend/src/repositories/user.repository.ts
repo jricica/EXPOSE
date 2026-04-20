@@ -1,57 +1,95 @@
-import { query } from "../db/pool";
 import { User, UserId, CreateUserInput } from "../models/user.model";
+import prisma from "../lib/prisma";
+
+export interface PublicUserProfile {
+    id: UserId;
+    username: string;
+    display_name?: string;
+    avatar_url?: string;
+}
 
 export class UserRepository {
 
     static async findById(id: UserId): Promise<User | null> {
-        const results = await query<User[]>(
-            "SELECT * FROM users WHERE id = ?",
-            [id]
-        );
-        return results.length ? results[0] : null;
+        const user = await prisma.user.findUnique({
+            where: { id }
+        });
+        return user as User | null;
     }
 
     static async findByEmail(email: string): Promise<User | null> {
-        const results = await query<User[]>(
-            "SELECT * FROM users WHERE email = ?",
-            [email]
-        );
-        return results.length ? results[0] : null;
+        const user = await prisma.user.findUnique({
+            where: { email }
+        });
+        return user as User | null;
+    }
+
+    static async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
+        const uniqueIds = Array.from(new Set(ids)).filter((id) => Number.isInteger(id) && id > 0);
+        if (uniqueIds.length === 0) {
+            return [];
+        }
+
+        const users = await prisma.user.findMany({
+            where: {
+                id: {
+                    in: uniqueIds,
+                },
+            },
+            select: {
+                id: true,
+                username: true,
+                display_name: true,
+                avatar_url: true,
+            },
+        });
+
+        return users as PublicUserProfile[];
     }
 
     static async create(data: CreateUserInput): Promise<UserId> {
-        const result = await query<any>(
-            "INSERT INTO users (username, email, passwordHash, lastLogin) VALUES (?, ?, ?, ?)",
-            [data.username, data.email, data.passwordHash, data.lastLogin || null]
-        );
-        return result.insertId;
+        const created = await prisma.user.create({
+            data: {
+                username: data.username,
+                email: data.email,
+                passwordHash: data.passwordHash,
+                lastLogin: data.lastLogin ?? null
+            },
+            select: { id: true }
+        });
+        return created.id;
     }
 
     static async update(id: UserId, data: Partial<User>): Promise<void> {
-        const fields = [];
-        const values = [];
+        const payload: Record<string, unknown> = {};
 
-        if (data.username) { fields.push("username = ?"); values.push(data.username); }
-        if (data.email) { fields.push("email = ?"); values.push(data.email); }
-        if (data.bio !== undefined) { fields.push("bio = ?"); values.push(data.bio); }
-        if (data.display_name !== undefined) { fields.push("display_name = ?"); values.push(data.display_name); }
-        if (data.avatar_url !== undefined) { fields.push("avatar_url = ?"); values.push(data.avatar_url); }
+        if (data.username) payload.username = data.username;
+        if (data.email) payload.email = data.email;
+        if (data.bio !== undefined) payload.bio = data.bio;
+        if (data.display_name !== undefined) payload.display_name = data.display_name;
+        if (data.avatar_url !== undefined) payload.avatar_url = data.avatar_url;
 
-        if (fields.length === 0) return;
+        if (Object.keys(payload).length === 0) {
+            return;
+        }
 
-        values.push(id);
-        await query(
-            `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
-            values
-        );
+        await prisma.user.update({
+            where: { id },
+            data: payload
+        });
     }
 
     static async updateLastLogin(id: UserId, date: Date): Promise<void> {
-        await query("UPDATE users SET lastLogin = ? WHERE id = ?", [date, id]);
+        await prisma.user.update({
+            where: { id },
+            data: { lastLogin: date }
+        });
     }
 
     static async delete(id: UserId): Promise<void> {
-        await query("DELETE FROM users WHERE id = ?", [id]);
+        await prisma.user.delete({
+            where: { id }
+        });
     }
 
     /**
@@ -63,6 +101,10 @@ export class UserRepository {
 
     async findByEmail(email: string): Promise<User | null> {
         return UserRepository.findByEmail(email);
+    }
+
+    async findPublicByIds(ids: UserId[]): Promise<PublicUserProfile[]> {
+        return UserRepository.findPublicByIds(ids);
     }
 
     async create(data: CreateUserInput): Promise<UserId> {
