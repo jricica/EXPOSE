@@ -10,6 +10,9 @@
     "db:test": "ts-node src/test-connection.ts",
     "db:init": "ts-node src/init-db.ts",
     "db:seed": "ts-node src/seed.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:baseline": "prisma migrate resolve --applied 20260419221500_init",
+    "test": "jest"
     "feed:reconcile": "ts-node src/reconcile-feed.ts",
     "test": "jest",
     "prisma:generate": "prisma generate",
@@ -33,6 +36,7 @@
     "multer": "^2.1.1",
     "mysql-promise": "^5.0.0",
     "mysql2": "^3.16.3",
+    "prisma": "^6.17.1",
     "tslib": "^2.8.1",
     "uuid": "^13.0.0"
   },
