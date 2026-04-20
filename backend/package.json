@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "prestart": "npm run db:migrate:deploy",
+    "prestart": "npm run prisma:migrate:deploy",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",
@@ -18,6 +18,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed"
+    "prisma:migrate:baseline": "prisma migrate resolve --applied 20260420000000_init"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1010.0",

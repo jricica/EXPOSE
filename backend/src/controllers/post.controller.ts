@@ -263,10 +263,15 @@ export const getPost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    await postService.deletePost(id);
+    const actorUserId = getUserId(req);
+    await postService.deletePost(id, actorUserId);
     res.status(204).send();
   } catch (err) {
     Sentry.captureException(err);
+    if (err instanceof Error && /no autorizado|forbidden|unauthorized/i.test(err.message)) {
+      return res.status(403).json({ message: err.message });
+    }
+
     res.status(404).json({ message: "Post not found" });
   }
 };
