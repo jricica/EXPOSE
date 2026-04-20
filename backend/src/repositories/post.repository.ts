@@ -16,9 +16,10 @@ export class PostRepository {
 		data: Omit<Post, 'id' | 'likes' | 'likedByMe' | 'is_deleted'> & { is_deleted?: boolean }
 	): Promise<PostId> {
 		const isDeleted = data.is_deleted ?? false;
+		// Ensure reports_count initialized to 0
 		const result = await query<any>(
-			'INSERT INTO posts (userId, content, media_url, createdAt, expiresAt, is_deleted) VALUES (?, ?, ?, ?, ?, ?)',
-			[data.userId, data.content, data.media_url || null, data.createdAt, data.expiresAt, isDeleted]
+			'INSERT INTO posts (userId, content, media_url, createdAt, expiresAt, is_deleted, reports_count) VALUES (?, ?, ?, ?, ?, ?, ?)',
+			[data.userId, data.content, data.media_url || null, data.createdAt, data.expiresAt, isDeleted, 0]
 		);
 		return result.insertId;
 	}
@@ -123,7 +124,7 @@ export class PostRepository {
 	}
 
 	async delete(id: PostId): Promise<void> {
-  		await query('UPDATE posts SET is_deleted = 1 WHERE id = ?', [id]);
+	  	await query('UPDATE posts SET is_deleted = 1 WHERE id = ? AND is_deleted = 0', [id]);
 	}
 
 
@@ -149,6 +150,18 @@ export class PostRepository {
 
 		const updated = await this.findById(postId);
 		return updated?.likes ?? 0;
+	}
+
+	async incrementReports(postId: PostId): Promise<number | null> {
+		// increment reports count atomically and return the new value
+		const res = await query<any>(
+			'UPDATE posts SET reports_count = reports_count + 1 WHERE id = ? AND is_deleted = 0',
+			[postId]
+		);
+
+		const rows = await query<any[]>('SELECT reports_count FROM posts WHERE id = ? AND is_deleted = 0', [postId]);
+		if (!rows || rows.length === 0) return null;
+		return Number(rows[0].reports_count || 0);
 	}
 }
 
