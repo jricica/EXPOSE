@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import { useAuth } from "../auth/AuthContext";
-import { profileService } from "./profile.service";
 import "./Profile.css";
+import { profileService } from "./profile.service";
 
 const Profile = () => {
   const { user, login } = useAuth();
@@ -127,4 +127,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Profile;

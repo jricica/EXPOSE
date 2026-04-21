@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { HttpError } from "../../../services/api";
 import { useAuth } from "../auth/AuthContext";
-import { postService } from "../posts/post.service";
-import { FeedCursor, } from "../posts/post.service";
+import { FeedCursor, postService } from "../posts/post.service";
 import { PostItem } from "../posts/post.types";
 
 
