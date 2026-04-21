@@ -42,3 +42,6 @@ jobs:
 
       - name: Validate build
         run: test -d dist || exit 1    
+
+      - name: Retry install
+        run: npm ci || npm ci
