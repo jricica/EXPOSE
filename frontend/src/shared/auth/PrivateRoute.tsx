@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useAuth, redirectToLogin } from '../../modules/auth/AuthContext';
 
 type Props = {
@@ -8,13 +8,10 @@ type Props = {
 const PrivateRoute: React.FC<Props> = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      redirectToLogin();
-    }
-  }, [isAuthenticated]);
-
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated) {
+    redirectToLogin();
+    return null;
+  }
 
   return <>{children}</>;
 };

@@ -43,6 +43,11 @@ export class UserService {
       throw new Error("El email ya está registrado");
     }
 
+    const existingUsername = await this.repo.findByUsername(username);
+    if (existingUsername) {
+      throw new Error("El username ya está registrado");
+    }
+
     const passwordHash = await bcrypt.hash(input.password, 10);
     const userId = await this.repo.create({
       username,
@@ -113,12 +118,11 @@ export class UserService {
 
 }
 
-export function buildUser(input: CreateUserInput): Omit<User, "id"> {
+export function buildUser(input: CreateUserInput): Omit<User, "id" | "role"> {
   return {
     username: validateUsername(input.username),
     email: validateEmail(input.email),
     passwordHash: input.passwordHash,
-    role: 1,
     friends: [],
     createdAt: new Date(),
     lastLogin: input.lastLogin ?? null,
