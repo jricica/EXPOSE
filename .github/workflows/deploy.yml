@@ -39,5 +39,6 @@ jobs:
           node -v
           npm -v
           ls -la
-      
-          
+
+      - name: Validate build
+        run: test -d dist || exit 1    
