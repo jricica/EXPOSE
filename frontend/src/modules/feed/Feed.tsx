@@ -1,32 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { get, HttpError } from "../../../services/api";
+import { HttpError } from "../../../services/api";
 import { useAuth } from "../auth/AuthContext";
-
-type Post = {
-  id: number;
-  content: string;
-  createdAt?: string;
-  expiresAt?: string;
-  likes?: number;
-  likedByMe?: boolean;
-  userId?: number;
-};
+import { postService } from "../posts/post.service";
+import { FeedCursor, } from "../posts/post.service";
+import { PostItem } from "../posts/post.types";
 
 
 const Feed: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasNext, setHasNext] = useState(false);
+  const [nextCursor, setNextCursor] = useState<FeedCursor | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
+  const [loadingDetailPostId, setLoadingDetailPostId] = useState<number | null>(null);
 
   // estado para filtro
   const [showOnlyMine, setShowOnlyMine] = useState(false);
 
-  const loadPosts = async (pageNum: number, isInitial: boolean = false) => {
+  const loadPosts = async (cursor?: FeedCursor, isInitial: boolean = false) => {
     try {
       if (isInitial) {
         setLoading(true);
@@ -34,21 +29,18 @@ const Feed: React.FC = () => {
         setLoadingMore(true);
       }
       setError(null);
-      
-      const response = await get<any>(`/posts?page=${pageNum}&limit=20`);
-      console.log('Feed data received:', response);
+      const response = await postService.listFeed(20, cursor);
 
       const newPosts = response.posts || [];
-      const pagination = response.pagination || { hasNext: false };
+      const pagination = response.pagination || { nextCursor: null };
 
       if (isInitial) {
         setPosts(newPosts);
       } else {
         setPosts((prev) => [...prev, ...newPosts]);
       }
-      
-      setHasNext(pagination.hasNext);
-      setPage(pageNum);
+
+      setNextCursor(pagination.nextCursor);
     } catch (err) {
       if (err instanceof HttpError) {
         setError(err.message || `Error ${err.status}`);
@@ -64,12 +56,71 @@ const Feed: React.FC = () => {
   };
 
   useEffect(() => {
-    loadPosts(1, true);
+    loadPosts(undefined, true);
   }, []);
 
   const handleLoadMore = () => {
-    if (!loadingMore && hasNext) {
-      loadPosts(page + 1);
+    if (!loadingMore && nextCursor) {
+      loadPosts(nextCursor);
+    }
+  };
+
+  const handleSetLike = async (postId: number, liked: boolean) => {
+    try {
+      const state = await postService.setLike(postId, liked);
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? { ...post, likes: state.likes, likedByMe: state.likedByMe }
+            : post,
+        ),
+      );
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(err.message || `Error ${err.status}`);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('No se pudo actualizar el like');
+      }
+    }
+  };
+
+  const handleToggleDetails = async (postId: number) => {
+    if (expandedPostId === postId) {
+      setExpandedPostId(null);
+      return;
+    }
+
+    try {
+      setLoadingDetailPostId(postId);
+      const detail = await postService.getPostDetail(postId);
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                likes: detail.likes,
+                likedByMe: detail.likedByMe,
+                commentCount: detail.commentCount,
+                shareCount: detail.shareCount,
+              }
+            : post,
+        ),
+      );
+
+      setExpandedPostId(postId);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(err.message || `Error ${err.status}`);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('No se pudo cargar el detalle del post');
+      }
+    } finally {
+      setLoadingDetailPostId(null);
     }
   };
 
@@ -152,6 +203,11 @@ const Feed: React.FC = () => {
 
           <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
             <span>{post.likes ?? 0} likes</span>
+            {isAuthenticated && (
+              <span style={{ marginLeft: 12, color: post.likedByMe ? '#7CFC9A' : '#aaa' }}>
+                {post.likedByMe ? 'Te gusta' : 'Aun no te gusta'}
+              </span>
+            )}
 
             {post.createdAt && (
               <span style={{ marginLeft: 12 }}>
@@ -159,10 +215,71 @@ const Feed: React.FC = () => {
               </span>
             )}
           </div>
+
+          {isAuthenticated && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleSetLike(post.id, !Boolean(post.likedByMe))}
+                style={{
+                  border: '1px solid #555',
+                  borderRadius: 6,
+                  padding: '6px 10px',
+                  background: post.likedByMe ? '#173824' : 'transparent',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                {post.likedByMe ? 'Ya no me gusta' : 'Me gusta'}
+              </button>
+
+              <button
+                onClick={() => handleToggleDetails(post.id)}
+                style={{
+                  border: '1px solid #555',
+                  borderRadius: 6,
+                  padding: '6px 10px',
+                  background: 'transparent',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                {loadingDetailPostId === post.id
+                  ? 'Cargando...'
+                  : expandedPostId === post.id
+                  ? 'Ocultar detalles'
+                  : 'Mostrar detalles'}
+              </button>
+            </div>
+          )}
+
+          {expandedPostId === post.id && (
+            <section style={{ marginTop: 12, borderTop: '1px solid #2a2a2a', paddingTop: 12 }}>
+              <h4 style={{ margin: '0 0 8px 0', fontSize: 14 }}>Comentarios y Actividad</h4>
+              <input
+                type="text"
+                value={commentDrafts[post.id] ?? ''}
+                onChange={(event) =>
+                  setCommentDrafts((drafts) => ({
+                    ...drafts,
+                    [post.id]: event.target.value,
+                  }))
+                }
+                placeholder="Escribe un comentario..."
+                style={{
+                  width: '100%',
+                  border: '1px solid #444',
+                  borderRadius: 6,
+                  padding: '8px 10px',
+                  background: '#121212',
+                  color: '#f3f3f3',
+                }}
+              />
+            </section>
+          )}
         </article>
       ))}
 
-      {hasNext && (
+      {nextCursor && (
         <button
           onClick={handleLoadMore}
           disabled={loadingMore}
