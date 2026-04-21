@@ -1,0 +1,68 @@
+# CODEOWNERS - Code Review Governance
+
+# This file is used to automatically request code reviews from specific owners
+# when pull requests affect their areas of responsibility.
+#
+# Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @backend-team @frontend-team
+
+# Infrastructure and DevOps
+/infrastructure/                @devops-team
+/infrastructure/terraform/      @devops-team @senior-devops
+/infrastructure/environments/   @devops-team
+/scripts/deploy/                @devops-team
+/setup-infrastructure.sh        @devops-team
+
+# Backend - Core application
+/backend/src/                   @backend-team
+/backend/src/index.ts          @backend-team @devops-team
+/backend/src/server.ts         @backend-team @devops-team
+/backend/src/app.ts            @backend-team @devops-team
+
+# Backend - Configuration (more restrictive)
+/backend/src/config/           @backend-team @devops-team
+/backend/Dockerfile            @devops-team @backend-lead
+/backend/package.json          @backend-lead
+/backend/tsconfig.json         @backend-lead
+
+# Backend - Database
+/backend/prisma/               @backend-team @database-admin
+/backend/src/db/               @backend-team @database-admin
+/backend/src/init-db.ts        @database-admin
+
+# Backend - Authentication & Security
+/backend/src/controllers/auth.controller.ts        @backend-team @security-team
+/backend/src/middlewares/auth.middleware.ts        @backend-team @security-team
+/backend/src/middlewares/validateRegister.middleware.ts @backend-team @security-team
+
+# Backend - Tests
+/backend/tests/                @backend-team
+/backend/jest.config.cjs       @backend-lead
+
+# Frontend
+/frontend/src/                 @frontend-team
+/frontend/package.json         @frontend-lead
+/frontend/tsconfig.json        @frontend-lead
+/frontend/vite.config.ts       @frontend-lead
+
+# Documentation
+/docs/environments/            @devops-team @technical-writers
+/docs/                         @technical-writers
+README.md                      @technical-writers @engineering-manager
+CONTRIBUTING.md               @engineering-manager
+
+# CI/CD and GitHub configuration
+/.github/                      @devops-team
+/.github/workflows/            @devops-team @senior-devops
+/.gitignore                    @devops-team
+
+# Root configuration files
+.env*                          @devops-team
+.nvmrc                         @backend-lead @frontend-lead
+.eslintrc                      @frontend-lead
+
+# Version control and release
+package.json                   @engineering-manager @devops-team
+package-lock.json             @devops-team

@@ -1,0 +1,59 @@
+# EXPOSE Terraform Variables - Production Environment
+# This file is version-controlled. Do NOT commit secrets here.
+# CRITICAL: Any changes here require multiple approvals
+
+# AWS Configuration
+aws_region  = "us-east-2"
+environment = "production"
+
+# VPC Configuration
+vpc_cidr             = "10.2.0.0/16"
+availability_zones   = ["us-east-2a", "us-east-2b", "us-east-2c"]
+public_subnet_cidrs  = ["10.2.1.0/24", "10.2.2.0/24", "10.2.3.0/24"]
+private_subnet_cidrs = ["10.2.10.0/24", "10.2.20.0/24", "10.2.30.0/24"]
+data_subnet_cidrs    = ["10.2.100.0/24", "10.2.101.0/24", "10.2.102.0/24"]
+
+# RDS Configuration - Production (Large instance, Multi-AZ)
+db_name              = "expose"
+db_username          = "expose_user"
+db_password          = "LOAD_FROM_SECRETS_MANAGER" # Will be replaced by script
+db_instance_class    = "db.r5.large"               # Production grade
+db_allocated_storage = 200                         # Substantial storage
+multi_az             = true                        # High availability
+backup_retention_days = 90
+enhanced_monitoring   = true
+
+# Redis Configuration - Production (Multi-AZ with failover)
+redis_node_type        = "cache.r7g.large"
+redis_num_cache_nodes  = 2
+redis_automatic_failover = true
+
+# S3 Configuration
+s3_bucket_name = "expose-media-prod"
+s3_versioning  = true
+s3_encryption  = "aws:kms"                   # KMS encryption for prod
+s3_lifecycle_days = 365
+s3_cross_region_replication = true
+
+# ECS Configuration - Production (High availability, auto-scaling)
+container_port = 3000
+desired_count  = 3
+cpu            = "1024"
+memory         = "2048"
+min_capacity   = 2
+max_capacity   = 8
+cpu_target_tracking = 60
+
+# Load Balancer
+alb_healthcheck_path = "/api/health"
+alb_healthcheck_interval = 15
+alb_healthcheck_timeout = 5
+alb_healthy_threshold = 2
+alb_unhealthy_threshold = 3
+
+# Tags and naming
+project_name = "expose"
+cost_center  = "operations"
+owner        = "platform-team"
+sla          = "99.9%"
+critical     = true

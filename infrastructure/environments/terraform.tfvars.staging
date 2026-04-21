@@ -1,0 +1,49 @@
+# EXPOSE Terraform Variables - Staging Environment
+# This file is version-controlled. Do NOT commit secrets here.
+# Note: Staging should mirror Production infrastructure
+
+# AWS Configuration
+aws_region  = "us-east-2"
+environment = "staging"
+
+# VPC Configuration (can mirror prod or be separate)
+vpc_cidr             = "10.1.0.0/16"
+availability_zones   = ["us-east-2a", "us-east-2b"]
+public_subnet_cidrs  = ["10.1.1.0/24", "10.1.2.0/24"]
+private_subnet_cidrs = ["10.1.10.0/24", "10.1.20.0/24"]
+data_subnet_cidrs    = ["10.1.100.0/24", "10.1.101.0/24"]
+
+# RDS Configuration - Staging (Medium instance, mirrors prod)
+db_name              = "expose"
+db_username          = "expose_user"
+db_password          = "LOAD_FROM_SECRETS_MANAGER" # Will be replaced by script
+db_instance_class    = "db.t4g.small"              # Small for staging
+db_allocated_storage = 50                          # Moderate storage
+multi_az             = false                       # Single-AZ for cost
+backup_retention_days = 30
+enhanced_monitoring   = true
+
+# Redis Configuration - Staging (Single node, mirrors prod setup)
+redis_node_type       = "cache.t4g.micro"
+redis_num_cache_nodes = 1
+redis_automatic_failover = false
+
+# S3 Configuration
+s3_bucket_name = "expose-media-staging"
+s3_versioning  = true
+s3_encryption  = "AES256"
+s3_lifecycle_days = 60
+
+# ECS Configuration - Staging (2 replicas like prod for testing)
+container_port = 3000
+desired_count  = 2
+cpu            = "512"
+memory         = "1024"
+min_capacity   = 1
+max_capacity   = 4
+cpu_target_tracking = 70
+
+# Tags and naming
+project_name = "expose"
+cost_center  = "engineering"
+owner        = "backend-team"

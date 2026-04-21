@@ -1,0 +1,48 @@
+# EXPOSE Terraform Variables - Development Environment
+# This file is version-controlled. Do NOT commit secrets here.
+
+# AWS Configuration
+aws_region  = "us-east-2"
+environment = "development"
+
+# VPC Configuration
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-2a", "us-east-2b"]
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+data_subnet_cidrs    = ["10.0.100.0/24", "10.0.101.0/24"]
+
+# RDS Configuration - Development (Small instance)
+db_name              = "expose"
+db_username          = "expose_user"
+db_password          = "LOAD_FROM_SECRETS_MANAGER" # Will be replaced by script
+db_instance_class    = "db.t4g.micro"              # Smallest for dev
+db_allocated_storage = 20                          # Minimal storage
+multi_az             = false                       # No multi-AZ for dev
+backup_retention_days = 7
+enhanced_monitoring   = false
+
+# Redis Configuration - Development (Minimal)
+redis_node_type       = "cache.t4g.micro"
+redis_num_cache_nodes = 1
+redis_automatic_failover = false
+
+# S3 Configuration
+s3_bucket_name = "expose-media-dev"
+s3_versioning  = false
+s3_encryption  = "AES256"
+s3_lifecycle_days = 30
+
+# ECS Configuration - Development (Minimal resources)
+container_port = 3000
+desired_count  = 1
+cpu            = "256"
+memory         = "512"
+min_capacity   = 1
+max_capacity   = 2
+cpu_target_tracking = 70
+
+# Tags and naming
+project_name = "expose"
+cost_center  = "engineering"
+owner        = "backend-team"
