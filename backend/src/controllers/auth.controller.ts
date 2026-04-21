@@ -25,17 +25,18 @@ const getErrorMessage = (err: unknown, fallback: string): string =>
   err instanceof Error ? err.message : fallback;
 
 const getPrismaUniqueTargets = (err: unknown): string[] => {
-  const knownError = err as { code?: string; meta?: { target?: unknown } };
+  const knownError = err as { code?: string; meta?: { target?: unknown; fields?: unknown } };
   if (knownError?.code !== "P2002") {
     return [];
   }
 
-  const target = knownError.meta?.target;
-  if (Array.isArray(target)) {
-    return target.map((entry) => String(entry));
+  // Prisma 5+ driver adapters expose field names in `fields`; older versions use `target`
+  const source = knownError.meta?.fields ?? knownError.meta?.target;
+  if (Array.isArray(source)) {
+    return source.map((entry) => String(entry));
   }
-  if (typeof target === "string") {
-    return [target];
+  if (typeof source === "string") {
+    return [source];
   }
   return [];
 };
@@ -158,8 +159,8 @@ export const login = async (req: Request, res: Response) => {
   } catch (err) {
     Sentry.captureException(err);
     recordLoginFailure(req, loginIdentifier);
-    const message = err instanceof Error ? err.message : "Error en el login";
-    res.status(401).json({ message });
+    const mapped = loginErrorResponse(err);
+    res.status(mapped.status).json(mapped.body);
   }
 };
 
