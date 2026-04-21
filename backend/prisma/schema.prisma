@@ -8,6 +8,18 @@ datasource db {
 }
 
 model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(50)
+  email        String     @unique @db.VarChar(255)
+  passwordHash String     @db.VarChar(255)
+  lastLogin    DateTime?  @db.DateTime(0)
+  createdAt    DateTime   @default(now()) @db.DateTime(0)
+  bio          String?    @db.Text
+  display_name String?    @db.VarChar(100)
+  avatar_url   String?    @db.Text
+  role         Int        @default(1)
+  posts        Post[]
+  post_likes   PostLike[]
   id              Int        @id @default(autoincrement())
   username        String     @unique @db.VarChar(50)
   email           String     @unique @db.VarChar(255)
