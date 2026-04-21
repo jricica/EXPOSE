@@ -84,12 +84,16 @@ export class StorageService {
     }
   }
 
-  async getSignedUrl(key: string): Promise<string> {
+  async getPublicUrl(key: string): Promise<string> {
+    if (process.env.CDN_BASE_URL) {
+      return `${process.env.CDN_BASE_URL}/${key}`;
+    }
+  
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
     });
-
+  
     return getSignedUrl(s3Client, command, { expiresIn: 3600 });
   }
 }
