@@ -3,20 +3,19 @@ import { storageService } from '../services/storage.service';
 import * as Sentry from '@sentry/node';
 
 export class UploadController {
-  async uploadFile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async uploadFile(req: Request, res: Response): Promise<void> {
     try {
       if (!req.file) {
         res.status(400).json({ error: 'No file uploaded' });
         return;
       }
-
-      const mediaUrl = await storageService.uploadFile(req.file);
-
-      res.status(200).json({ 
-        url: mediaUrl,
-        filename: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
+  
+      const key = await storageService.uploadAvatar(req.file);
+      const url = await storageService.getSignedUrl(key);
+  
+      res.status(200).json({
+        key,
+        url,
       });
     } catch (error) {
       Sentry.captureException(error);
