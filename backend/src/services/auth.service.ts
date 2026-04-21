@@ -37,7 +37,7 @@ export class AuthService {
   async register(input: RegisterInput): Promise<LoginResponse> {
     const username = validateUsername(input.username);
     const email = validateEmail(input.email);
-    validatePassword(input.password);
+    validatePassword(input.password, { email, username });
 
     const user = await this.userService.registerAuthUser({
       username,
