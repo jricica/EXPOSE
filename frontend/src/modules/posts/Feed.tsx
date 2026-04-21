@@ -14,38 +14,42 @@ export const CreatePost = () => {
 
     if (isEmpty || isTooLong) return;
 
-
+    // aquí luego irá tu API
 
     setContent("");
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="create-post" onSubmit={handleSubmit}>
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         maxLength={MAX_CHARACTERS}
         placeholder="¿Qué estás pensando?"
+        className="create-post-textarea"
       />
 
-      <div
-        style={{
-          textAlign: "right",
-          fontSize: "0.85rem",
-          color:
+      <div className="create-post-footer">
+        <span
+          className={`char-count ${
             remaining < 0
-              ? "red"
+              ? "danger"
               : remaining < 20
-              ? "orange"
-              : "gray",
-        }}
-      >
-        {remaining} caracteres restantes
-      </div>
+              ? "warning"
+              : ""
+          }`}
+        >
+          {remaining}
+        </span>
 
-      <button type="submit" disabled={isEmpty || isTooLong}>
-        Publicar
-      </button>
+        <button
+          type="submit"
+          className="create-post-button"
+          disabled={isEmpty || isTooLong}
+        >
+          Publicar
+        </button>
+      </div>
     </form>
   );
 };
