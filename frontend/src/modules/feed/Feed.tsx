@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { HttpError } from "../../../services/api";
 import { useAuth } from "../auth/AuthContext";
-import { postService } from "../posts/post.service";
-import { FeedCursor, } from "../posts/post.service";
+import { FeedCursor, postService } from "../posts/post.service";
 import { PostItem } from "../posts/post.types";
-import LoadingState from "../../components/UI./LoadingState";
-import EmptyState from "../../components/UI./EmptyState";
-import ErrorState from "../../components/UI./ErrorState";
 
 
 const Feed: React.FC = () => {
