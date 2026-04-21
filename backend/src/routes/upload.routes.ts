@@ -17,6 +17,7 @@ const upload = multer({
  * @desc Upload a file to S3
  * @access
  */
-router.post('/', authMiddleware, upload.single('file'), uploadController.uploadFile);
+router.post('/profile-picture', authMiddleware, upload.single('file'), uploadController.uploadFile);
+router.post('/profile-picture/presigned', authMiddleware, uploadController.getUploadUrl);
 
 export default router;

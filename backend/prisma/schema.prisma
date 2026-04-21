@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(50)
+  email        String     @unique @db.VarChar(255)
+  passwordHash String     @db.VarChar(255)
+  lastLogin    DateTime?  @db.DateTime(0)
+  createdAt    DateTime   @default(now()) @db.DateTime(0)
+  bio          String?    @db.Text
+  display_name String?    @db.VarChar(100)
+  avatar_url   String?    @db.Text
+  role         Int        @default(1)
+  posts        Post[]
+  post_likes   PostLike[]
+
+  @@map("users")
+  id            Int        @id @default(autoincrement())
+  username      String     @unique @db.VarChar(50)
+  email         String     @unique @db.VarChar(255)
+  passwordHash  String     @db.VarChar(255)
+  lastLogin     DateTime?  
+  createdAt     DateTime   @default(now())
+  bio           String?    @db.Text
+  display_name  String?    @db.VarChar(100)
+  avatar_url    String?    @db.Text
+  posts         Post[]
+  postLikes     PostLike[]
+}
+
+model Post {
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  content    String     @db.Text
+  media_url  String?    @db.Text
+  createdAt  DateTime   @default(now())
+  expiresAt  DateTime
+  likes      Int        @default(0)
+  is_deleted Boolean    @default(false)
+  user       User       @relation(fields: [userId], references: [id])
+  likesBy    PostLike[]
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId], name: "unique_like")
+}

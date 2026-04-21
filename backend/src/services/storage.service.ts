@@ -1,42 +1,100 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, S3_BUCKET_NAME } from '../config/aws';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
 
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+const mimeToExtension: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
 export class StorageService {
-  /**
-   * Upload a file to S3 and return the public URL
-   */
-  async uploadFile(file: Express.Multer.File): Promise<string> {
+  async uploadAvatar(file: Express.Multer.File): Promise<string> {
     if (!S3_BUCKET_NAME) {
-      throw new Error('AWS_S3_BUCKET is not defined in environment variables');
+      throw new Error('AWS_S3_BUCKET is not defined');
     }
 
-    const fileExtension = path.extname(file.originalname);
-    const fileName = `${uuidv4()}${fileExtension}`;
-    const key = `posts/${fileName}`;
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new Error('Tipo de archivo no permitido');
+    }
+
+    const ext = mimeToExtension[file.mimetype];
+    if (!ext) {
+      throw new Error('Extensión no soportada');
+    }
+
+    const randomName = crypto.randomBytes(16).toString('hex');
+    const key = `avatars/${randomName}${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read', // Assuming we want the files to be publicly accessible
     });
 
     try {
       await s3Client.send(command);
-      
-      // Return the public URL
-      // NOTE: This URL structure may vary depending on the bucket settings (e.g., if using a custom domain or CloudFront)
-      // Standard format: https://bucket-name.s3.region.amazonaws.com/key
-      const region = await s3Client.config.region();
-      return `https://${S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
+      return key;
     } catch (error) {
       Sentry.captureException(error);
-      throw new Error('Failed to upload file to storage');
+      throw new Error('Failed to upload file');
     }
+  }
+
+  async generateUploadUrl(mimeType: string): Promise<{ uploadUrl: string; key: string }> {
+    if (!S3_BUCKET_NAME) {
+      throw new Error('AWS_S3_BUCKET is not defined');
+    }
+
+    if (!allowedMimeTypes.includes(mimeType)) {
+      throw new Error('Tipo de archivo no permitido');
+    }
+
+    const ext = mimeToExtension[mimeType];
+    if (!ext) {
+      throw new Error('Extensión no soportada');
+    }
+
+    const randomName = crypto.randomBytes(16).toString('hex');
+    const key = `avatars/${randomName}${ext}`;
+
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      ContentType: mimeType,
+    });
+
+    try {
+      const uploadUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 60, 
+      });
+
+      return { uploadUrl, key };
+    } catch (error) {
+      Sentry.captureException(error);
+      throw new Error('Failed to generate upload URL');
+    }
+  }
+
+  async getPublicUrl(key: string): Promise<string> {
+    if (process.env.CDN_BASE_URL) {
+      return `${process.env.CDN_BASE_URL}/${key}`;
+    }
+  
+    const command = new GetObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+    });
+  
+    return getSignedUrl(s3Client, command, { expiresIn: 3600 });
   }
 }
 
