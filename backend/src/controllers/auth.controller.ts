@@ -20,13 +20,17 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
+  const loginIdentifier = typeof req.body?.email === "string"
+    ? req.body.email
+    : req.body?.username;
+
   try {
     const response = await authService.login(req.body);
-    recordLoginSuccess(req);
+    recordLoginSuccess(req, loginIdentifier);
     res.json(response);
   } catch (err) {
     Sentry.captureException(err);
-    recordLoginFailure(req);
+    recordLoginFailure(req, loginIdentifier);
     const message = err instanceof Error ? err.message : "Error en el login";
     res.status(401).json({ message });
   }
@@ -35,12 +39,19 @@ export const login = async (req: Request, res: Response) => {
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.context) {
-      return res.status(401).json({ message: "No autorizado" });
+      return res.status(401).json({ error: "unauthorized", message: "No autorizado" });
     }
-    res.json(req.context);
+
+    const userId = Number(req.context.userId);
+    const user = await authService.getUserProfile(userId);
+    return res.json({ user });
   } catch (err) {
+    if (err instanceof Error && err.message === "Usuario no encontrado") {
+      return res.status(401).json({ error: "unauthorized", message: "Usuario no encontrado o inactivo" });
+    }
+
     Sentry.captureException(err);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 

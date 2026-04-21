@@ -24,6 +24,30 @@ const mapUser = (user: {
     createdAt: Date;
     lastLogin: Date | null;
 }): User => ({
+const USER_SELECT = {
+    id: true,
+    username: true,
+    email: true,
+    passwordHash: true,
+    bio: true,
+    display_name: true,
+    avatar_url: true,
+    role: true,
+    createdAt: true,
+    lastLogin: true,
+} satisfies Prisma.UserSelect;
+
+const PUBLIC_USER_SELECT = {
+    id: true,
+    username: true,
+    display_name: true,
+    avatar_url: true,
+} satisfies Prisma.UserSelect;
+
+type UserRecord = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;
+type PublicUserRecord = Prisma.UserGetPayload<{ select: typeof PUBLIC_USER_SELECT }>;
+
+const mapUser = (user: UserRecord): User => ({
     id: user.id,
     username: user.username,
     email: user.email,
@@ -66,6 +90,7 @@ const toRepositoryError = (error: unknown, operation: string): Error => {
             if (targetText.includes('username')) {
                 return new Error('El username ya está registrado');
             }
+
             return new Error('Registro de usuario duplicado');
         }
 
@@ -103,6 +128,8 @@ export class UserRepository {
         return runWithRepositoryErrorHandling('findByEmail', async () => {
             const user = await prisma.user.findUnique({
                 where: { email: normalizeEmail(email) }
+                where: { email },
+                select: USER_SELECT,
             });
             return user ? mapUser(user) : null;
         });
@@ -112,6 +139,8 @@ export class UserRepository {
         return runWithRepositoryErrorHandling('findByUsername', async () => {
             const user = await prisma.user.findUnique({
                 where: { username: normalizeUsername(username) }
+                where: { username },
+                select: USER_SELECT,
             });
             return user ? mapUser(user) : null;
         });
@@ -146,8 +175,8 @@ export class UserRepository {
         return runWithRepositoryErrorHandling('create', async () => {
             const created = await prisma.user.create({
                 data: {
-                    username: normalizeUsername(data.username),
-                    email: normalizeEmail(data.email),
+                    username: data.username,
+                    email: data.email,
                     passwordHash: data.passwordHash,
                     lastLogin: data.lastLogin ?? null
                 },
