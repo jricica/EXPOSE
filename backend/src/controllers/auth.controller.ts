@@ -138,12 +138,10 @@ export const register = async (req: Request, res: Response) => {
     const response = await authService.register(req.body);
     res.status(201).json(response);
   } catch (err) {
-    const mapped = registerErrorResponse(err);
-    if (mapped.status >= 500) {
-      console.error("Register Error:", err);
-      Sentry.captureException(err);
-    }
-    return res.status(mapped.status).json(mapped.body);
+    console.error("Register Error:", err);
+    Sentry.captureException(err);
+    const message = err instanceof Error ? err.message : "Error en el registro";
+    res.status(400).json({ message });
   }
 };
 
