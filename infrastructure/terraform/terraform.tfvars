@@ -3,9 +3,9 @@ aws_region  = "us-east-2"
 environment = "development"
 
 # VPC Configuration
-vpc_cidr             = "10.0.0.0/16"
+vpc_cidr             = "172.31.0.0/16"
 availability_zones   = ["us-east-2a", "us-east-2b"]
-public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+public_subnet_cidrs  = ["172.31.0.0/20", "172.31.16.0/20"]
 private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
 data_subnet_cidrs    = ["10.0.100.0/24", "10.0.101.0/24"]
 

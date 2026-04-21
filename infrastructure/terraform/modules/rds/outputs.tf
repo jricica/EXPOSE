@@ -33,7 +33,7 @@ output "read_replica_endpoint" {
 
 output "db_security_group_id" {
   description = "RDS security group ID"
-  value       = aws_security_group.rds.id
+  value       = local.rds_sg_id
 }
 
 output "db_subnet_group_name" {

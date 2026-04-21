@@ -8,8 +8,15 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
-# RDS Parameter Group
+# Prefer existing default DB parameter group when present to avoid
+# replacing the provider-managed default groups during adoption.
+data "aws_db_parameter_group" "existing" {
+  name = var.existing_db_parameter_group_name
+}
+
+# Managed parameter group (disabled by default to avoid accidental replacement)
 resource "aws_db_parameter_group" "main" {
+  count  = 0
   family = "mysql8.0"
   name   = "expose-${var.environment}-db-params"
 
@@ -49,12 +56,40 @@ resource "aws_db_parameter_group" "main" {
 }
 
 # RDS Security Group
+# If an existing SG ID is provided, use a data source to reference it; otherwise
+# create a new SG resource. We use count to make either the resource or the
+# data source exist, and expose the chosen ID via `local.rds_sg_id`.
 resource "aws_security_group" "rds" {
-  name_prefix = "expose-${var.environment}-rds-"
-  vpc_id      = var.vpc_id
+  # For this environment we will not create a new SG; rely on the
+  # provided existing SG. Set count=0 to avoid creating a new SG.
+  count  = 0
+  name   = "expose-${var.environment}-rds-sg"
+  vpc_id = var.vpc_id
+
+  # Default egress (allow all)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     Name = "expose-${var.environment}-rds-sg"
   }
+
+  lifecycle {
+    ignore_changes = [ingress, egress]
+  }
+}
+
+data "aws_security_group" "existing" {
+  count = var.existing_rds_security_group_id != "" ? 1 : 0
+  id    = var.existing_rds_security_group_id
+}
+
+locals {
+  rds_sg_id = var.existing_rds_security_group_id != "" ? data.aws_security_group.existing[0].id : aws_security_group.rds[0].id
 }
 
 # Allow inbound from designated security groups (API/ECS/etc.)
@@ -64,7 +99,7 @@ resource "aws_security_group_rule" "allow_from_sgs" {
   from_port                 = 3306
   to_port                   = 3306
   protocol                  = "tcp"
-  security_group_id         = aws_security_group.rds.id
+  security_group_id         = local.rds_sg_id
   source_security_group_id  = var.allowed_source_security_group_ids[count.index]
   description               = "Allow DB access from authorised security groups"
 }
@@ -76,7 +111,7 @@ resource "aws_security_group_rule" "allow_from_admin_cidrs" {
   from_port         = 3306
   to_port           = 3306
   protocol          = "tcp"
-  security_group_id = aws_security_group.rds.id
+  security_group_id = local.rds_sg_id
   cidr_blocks       = [var.allowed_admin_cidrs[count.index]]
   description       = "Admin access to DB from specific CIDR"
 }
@@ -104,7 +139,7 @@ resource "aws_db_instance" "main" {
 
   # Network configuration
   db_subnet_group_name   = aws_db_subnet_group.main.name
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  vpc_security_group_ids = [local.rds_sg_id]
   # Match current instance configuration (currently public) to avoid
   # Terraform attempting to replace the instance during import/first apply.
   # After import and verification we can change this to 'false' and apply
@@ -126,8 +161,8 @@ resource "aws_db_instance" "main" {
   performance_insights_kms_key_id = aws_kms_key.rds.arn
 
   # Additional configuration
-  parameter_group_name = aws_db_parameter_group.main.name
-  option_group_name   = aws_db_option_group.main.name
+  parameter_group_name = local.effective_parameter_group_name
+  option_group_name    = local.effective_option_group_name
 
   # Enable IAM database authentication if requested
   iam_database_authentication_enabled = var.iam_database_authentication_enabled
@@ -179,7 +214,7 @@ resource "aws_db_instance" "read_replica" {
   kms_key_id       = aws_kms_key.rds.arn
 
   # Network configuration
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  vpc_security_group_ids = [local.rds_sg_id]
   publicly_accessible    = false
 
   # Backup (replicas don't have backups)
@@ -240,8 +275,10 @@ resource "aws_iam_role_policy_attachment" "rds_enhanced_monitoring" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
 
-# DB Option Group
+# Prefer existing default DB option group when present
+# Managed option group (disabled by default)
 resource "aws_db_option_group" "main" {
+  count                = 0
   name                 = "expose-${var.environment}-db-options"
   engine_name          = "mysql"
   major_engine_version = "8.0"
@@ -254,4 +291,10 @@ resource "aws_db_option_group" "main" {
       value = "CONNECT,QUERY"
     }
   }
+}
+
+# Effective names for parameter and option groups: prefer existing defaults
+locals {
+  effective_parameter_group_name = try(data.aws_db_parameter_group.existing.name, aws_db_parameter_group.main[0].name)
+  effective_option_group_name    = var.existing_db_option_group_name != "" ? var.existing_db_option_group_name : aws_db_option_group.main[0].name
 }

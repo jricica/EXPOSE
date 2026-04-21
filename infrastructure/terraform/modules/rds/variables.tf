@@ -66,3 +66,21 @@ variable "iam_database_authentication_enabled" {
   type        = bool
   default     = true
 }
+
+variable "existing_rds_security_group_id" {
+  description = "If provided, use this existing security group ID for the RDS instance instead of creating a new one"
+  type        = string
+  default     = ""
+}
+
+variable "existing_db_parameter_group_name" {
+  description = "Name of an existing DB parameter group to use instead of creating one (e.g. default.mysql8.4)"
+  type        = string
+  default     = "default.mysql8.4"
+}
+
+variable "existing_db_option_group_name" {
+  description = "Name of an existing DB option group to use instead of creating one (e.g. default:mysql-8-4)"
+  type        = string
+  default     = "default:mysql-8-4"
+}

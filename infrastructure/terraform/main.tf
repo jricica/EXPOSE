@@ -66,6 +66,7 @@ module "rds" {
   allowed_source_security_group_ids = var.db_allowed_security_group_ids
   allowed_admin_cidrs                = var.db_admin_allowed_cidrs
   iam_database_authentication_enabled = var.iam_database_authentication_enabled
+  existing_rds_security_group_id     = "sg-00341873fbd493c8a"
 }
 /*
   The following modules are commented out temporarily because their module
