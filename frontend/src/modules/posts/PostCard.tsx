@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "./PostCard.css";
 
 type Props = {
@@ -8,10 +8,32 @@ type Props = {
     content: string;
     image_url?: string;
     created_at: string;
+    is_sensitive?: boolean;
   };
 };
 
 const PostCard: React.FC<Props> = ({ post }) => {
+  const [showContent, setShowContent] = useState(!post.is_sensitive);
+
+  const handleReport = async () => {
+    try {
+      await fetch("/api/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          postId: post.id,
+          reason: "Contenido inapropiado",
+        }),
+      });
+
+      alert("Reporte enviado");
+    } catch {
+      alert("Error al enviar reporte");
+    }
+  };
+
   return (
     <div className="post-card">
 
@@ -23,21 +45,38 @@ const PostCard: React.FC<Props> = ({ post }) => {
         </span>
       </div>
 
-      {/* CONTENT */}
-      <div className="post-content">
-        <p>{post.content}</p>
-      </div>
+      {/* WARNING CONTENIDO SENSIBLE */}
+      {post.is_sensitive && !showContent && (
+        <div className="sensitive-warning">
+          ⚠ Contenido sensible
+          <button
+            className="show-content-btn"
+            onClick={() => setShowContent(true)}
+          >
+            Ver
+          </button>
+        </div>
+      )}
 
-      {/* IMAGE */}
-      {post.image_url && (
-        <img src={post.image_url} alt="post" className="post-image" />
+      {/* CONTENT */}
+      {showContent && (
+        <>
+          <div className="post-content">
+            <p>{post.content}</p>
+          </div>
+
+          {post.image_url && (
+            <img src={post.image_url} alt="post" className="post-image" />
+          )}
+        </>
       )}
 
       {/* ACTIONS */}
       <div className="post-actions">
-        <button>❤️</button>
-        <button>💬</button>
-        <button>↗</button>
+        <button title="Like">❤️</button>
+        <button title="Comentar">💬</button>
+        <button title="Compartir">↗</button>
+        <button title="Reportar" onClick={handleReport}>🚩</button>
       </div>
 
     </div>
