@@ -17,14 +17,17 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: (redirect?: boolean) => void;
+  setUser: (user: AuthUser | null) => void; 
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const TOKEN_STORAGE_KEY = 'auth_token';
+const USER_STORAGE_KEY = 'auth_user';
 
-const redirectToLogin = () => {
+export const redirectToLogin = () => {
   const current = `${window.location.pathname}${window.location.search}`;
+
   if (window.location.pathname === '/login') {
     window.location.replace('/login');
     return;
@@ -32,6 +35,7 @@ const redirectToLogin = () => {
 
   const params = new URLSearchParams();
   params.set('from', current);
+
   window.location.replace(`/login?${params.toString()}`);
 };
 
@@ -41,38 +45,50 @@ type AuthProviderProps = {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUserState] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     let active = true;
+
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
 
     const bootstrapAuth = async () => {
       if (!storedToken) {
-        if (!active) return;
-        setTokenState(null);
-        setUser(null);
-        localStorage.removeItem('auth_user');
-        setApiToken(null);
+        cleanupAuth();
         return;
       }
 
       setTokenState(storedToken);
       setApiToken(storedToken);
 
+      if (storedUser) {
+        try {
+          setUserState(JSON.parse(storedUser));
+        } catch {
+          localStorage.removeItem(USER_STORAGE_KEY);
+        }
+      }
+
       try {
         const response = await authService.getMe();
+
         if (!active) return;
-        setUser(response.user);
-        localStorage.setItem('auth_user', JSON.stringify(response.user));
+
+        setUserState(response.user);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       } catch {
         if (!active) return;
-        setTokenState(null);
-        setUser(null);
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        localStorage.removeItem('auth_user');
-        setApiToken(null);
+        cleanupAuth();
       }
+    };
+
+    const cleanupAuth = () => {
+      setTokenState(null);
+      setUserState(null);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+      setApiToken(null);
     };
 
     setUnauthorizedHandler(() => {
@@ -89,43 +105,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = (newToken: string, userData: AuthUser) => {
-  setTokenState(newToken);
-  setUser(userData);
-  localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-  localStorage.setItem('auth_user', JSON.stringify(userData));
-  setApiToken(newToken);
-};
+    setTokenState(newToken);
+    setUserState(userData);
+
+    localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+
+    setApiToken(newToken);
+  };
 
   const logout = (redirect = true) => {
-  setTokenState(null);
-  setUser(null);
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem('auth_user');
-  setApiToken(null);
+    setTokenState(null);
+    setUserState(null);
 
-  if (redirect) {
-    redirectToLogin();
-  }
-};
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+
+    setApiToken(null);
+
+    if (redirect) {
+      redirectToLogin();
+    }
+  };
+
+  const setUser = (userData: AuthUser | null) => {
+    setUserState(userData);
+
+    if (userData) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY);
+    }
+  };
 
   const value: AuthContextValue = {
-  token,
-  user,
-  isAuthenticated: Boolean(token),
-  login,
-  logout,
-};
+    token,
+    user,
+    isAuthenticated: Boolean(token),
+    login,
+    logout,
+    setUser,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
 
 export default AuthContext;
-export { redirectToLogin };
