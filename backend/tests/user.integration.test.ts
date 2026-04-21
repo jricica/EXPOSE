@@ -56,6 +56,7 @@ describe('UserRegister', () => {
         expect(meResponse.body.email).toBe("testname@ufm.edu");
         expect(meResponse.body.username).toBe("testname");
     });
+  });
 });
 
   it('returns token on register and allows immediate /auth/me bootstrap', async () => {
