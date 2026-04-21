@@ -30,3 +30,6 @@ jobs:
 
       - name: Deploy (placeholder)
         run: echo "Deploy your service here"
+
+      - name: Run DB migrations
+        run: npx prisma migrate deploy
