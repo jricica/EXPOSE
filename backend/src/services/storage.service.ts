@@ -42,10 +42,45 @@ export class StorageService {
 
     try {
       await s3Client.send(command);
-      return key; 
+      return key;
     } catch (error) {
       Sentry.captureException(error);
       throw new Error('Failed to upload file');
+    }
+  }
+
+  async generateUploadUrl(mimeType: string): Promise<{ uploadUrl: string; key: string }> {
+    if (!S3_BUCKET_NAME) {
+      throw new Error('AWS_S3_BUCKET is not defined');
+    }
+
+    if (!allowedMimeTypes.includes(mimeType)) {
+      throw new Error('Tipo de archivo no permitido');
+    }
+
+    const ext = mimeToExtension[mimeType];
+    if (!ext) {
+      throw new Error('Extensión no soportada');
+    }
+
+    const randomName = crypto.randomBytes(16).toString('hex');
+    const key = `avatars/${randomName}${ext}`;
+
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      ContentType: mimeType,
+    });
+
+    try {
+      const uploadUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 60, 
+      });
+
+      return { uploadUrl, key };
+    } catch (error) {
+      Sentry.captureException(error);
+      throw new Error('Failed to generate upload URL');
     }
   }
 

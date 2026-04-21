@@ -18,5 +18,6 @@ const upload = multer({
  * @access
  */
 router.post('/profile-picture', authMiddleware, upload.single('file'), uploadController.uploadFile);
+router.post('/profile-picture/presigned', authMiddleware, uploadController.getUploadUrl);
 
 export default router;
