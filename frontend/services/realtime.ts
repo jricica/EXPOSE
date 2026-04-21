@@ -67,11 +67,17 @@ class RealtimeService {
     return () => {
       this.handlers.delete(handler);
     };
+    this.handlers.add(handler);
+
+    return () => {
+      this.handlers.delete(handler);
+    };
   }
 
   disconnect() {
     this.socket?.close();
     this.socket = null;
+    this.handlers.clear();
     this.handlers.clear();
   }
 }
