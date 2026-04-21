@@ -3,6 +3,9 @@ import Layout from "../../components/Layout";
 import { useAuth } from "../auth/AuthContext";
 import { profileService } from "./profile.service";
 import "./Profile.css";
+import LoadingState from "../../components/UI./LoadingState";
+import EmptyState from "../../components/UI./EmptyState";
+import ErrorState from "../../components/UI./ErrorState";
 
 const Profile = () => {
   const { user, login } = useAuth();
@@ -127,4 +130,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Profile;
