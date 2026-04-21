@@ -8,33 +8,17 @@ datasource db {
 }
 
 model User {
-  id           Int        @id @default(autoincrement())
-  username     String     @unique @db.VarChar(50)
-  email        String     @unique @db.VarChar(255)
-  passwordHash String     @db.VarChar(255)
-  lastLogin    DateTime?  @db.DateTime(0)
-  createdAt    DateTime   @default(now()) @db.DateTime(0)
-  bio          String?    @db.Text
-  display_name String?    @db.VarChar(100)
-  avatar_url   String?    @db.Text
-  role         Int        @default(1)
-  posts        Post[]
-  post_likes   PostLike[]
-  id              Int        @id @default(autoincrement())
-  username        String     @unique @db.VarChar(50)
-  email           String     @unique @db.VarChar(255)
-  passwordHash    String     @db.VarChar(255)
-  lastLogin       DateTime?  @db.DateTime(0)
-  createdAt       DateTime   @default(now()) @db.DateTime(0)
-  bio             String?    @db.Text
-  display_name    String?    @db.VarChar(100)
-  avatar_url      String?    @db.Text
-  posts           Post[]
-  post_likes      PostLike[]
-  follower_links  Follower[] @relation("follower_user")
-  following_links Follower[] @relation("following_user")
-
-  @@map("users")
+  id            Int        @id @default(autoincrement())
+  username      String     @unique @db.VarChar(50)
+  email         String     @unique @db.VarChar(255)
+  passwordHash  String     @db.VarChar(255)
+  lastLogin     DateTime?  
+  createdAt     DateTime   @default(now())
+  bio           String?    @db.Text
+  display_name  String?    @db.VarChar(100)
+  avatar_url    String?    @db.Text
+  posts         Post[]
+  postLikes     PostLike[]
 }
 
 model Post {
@@ -42,39 +26,21 @@ model Post {
   userId     Int
   content    String     @db.Text
   media_url  String?    @db.Text
-  createdAt  DateTime   @default(now()) @db.DateTime(0)
-  expiresAt  DateTime   @db.DateTime(0)
+  createdAt  DateTime   @default(now())
+  expiresAt  DateTime
   likes      Int        @default(0)
-  is_deleted Boolean    @default(false) @db.TinyInt
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post_likes PostLike[]
-
-  @@index([createdAt], map: "idx_posts_createdAt")
-  @@index([createdAt, id], map: "idx_posts_createdAt_id")
-  @@index([expiresAt], map: "idx_posts_expiresAt")
-  @@map("posts")
+  is_deleted Boolean    @default(false)
+  user       User       @relation(fields: [userId], references: [id])
+  likesBy    PostLike[]
 }
 
 model PostLike {
   id        Int      @id @default(autoincrement())
   postId    Int
   userId    Int
-  createdAt DateTime @default(now()) @db.DateTime(0)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@unique([postId, userId], map: "unique_like")
-  @@map("post_likes")
-}
-
-model Follower {
-  id           Int      @id @default(autoincrement())
-  follower_id  Int
-  following_id Int
-  createdAt    DateTime @default(now()) @db.DateTime(0)
-  follower     User     @relation("follower_user", fields: [follower_id], references: [id], onDelete: Cascade)
-  following    User     @relation("following_user", fields: [following_id], references: [id], onDelete: Cascade)
-
-  @@unique([follower_id, following_id], map: "unique_follow")
-  @@map("followers")
+  @@unique([postId, userId], name: "unique_like")
 }
