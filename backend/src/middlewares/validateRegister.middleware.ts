@@ -121,6 +121,15 @@ export const validateRegister = (
     return next();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid registration data";
-    return res.status(400).json({ message });
+    const field =
+      /email/i.test(message) ? "email" :
+      /password/i.test(message) ? "password" :
+      undefined;
+
+    return res.status(400).json({
+      error: "validation_error",
+      message,
+      ...(field ? { field } : {}),
+    });
   }
 };

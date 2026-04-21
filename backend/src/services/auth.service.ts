@@ -2,7 +2,13 @@ import * as Sentry from "@sentry/node";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model";
 import { userRepository } from "../repositories/user.repository";
-import { JWT_SECRET } from "../config/env";
+import {
+  JWT_ACCESS_TOKEN_EXPIRES_IN,
+  JWT_ALGORITHM,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+  JWT_SECRET,
+} from "../config/env";
 import { UserService, validateEmail, validateUsername, validatePassword } from "./user.service";
 
 export interface RegisterInput {
@@ -66,17 +72,39 @@ export class AuthService {
   }
 
   private buildResponse(user: Omit<User, 'passwordHash'>): LoginResponse {
+    const signOptions: jwt.SignOptions = {
+      expiresIn: JWT_ACCESS_TOKEN_EXPIRES_IN,
+      algorithm: JWT_ALGORITHM,
+    };
+
+    if (JWT_ISSUER) {
+      signOptions.issuer = JWT_ISSUER;
+    }
+
+    if (JWT_AUDIENCE) {
+      signOptions.audience = JWT_AUDIENCE;
+    }
+
     const accessToken = jwt.sign(
       { sub: user.id.toString(), email: user.email, username: user.username, role: (user as any).role },
       JWT_SECRET,
-      { expiresIn: "7d", algorithm: "HS256" }
+      signOptions
     );
+
+    const decodedToken = jwt.decode(accessToken);
+    const expiresInFromToken =
+      decodedToken &&
+      typeof decodedToken === "object" &&
+      typeof decodedToken.exp === "number" &&
+      typeof decodedToken.iat === "number"
+        ? Math.max(decodedToken.exp - decodedToken.iat, 0)
+        : 7 * 24 * 60 * 60;
 
     return {
       user,
       token: {
         accessToken,
-        expiresIn: 7 * 24 * 60 * 60,
+        expiresIn: expiresInFromToken,
       },
       authentication_token: accessToken,
     };
