@@ -38,6 +38,11 @@ resource "aws_db_parameter_group" "main" {
     value = "1"
   }
 
+  parameter {
+    name  = "require_secure_transport"
+    value = "ON"
+  }
+
   tags = {
     Name = "expose-${var.environment}-db-params"
   }
@@ -47,18 +52,33 @@ resource "aws_db_parameter_group" "main" {
 resource "aws_security_group" "rds" {
   name_prefix = "expose-${var.environment}-rds-"
   vpc_id      = var.vpc_id
-
-  ingress {
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    cidr_blocks     = [var.vpc_cidr]
-    description     = "MySQL access from VPC"
-  }
-
   tags = {
     Name = "expose-${var.environment}-rds-sg"
   }
+}
+
+# Allow inbound from designated security groups (API/ECS/etc.)
+resource "aws_security_group_rule" "allow_from_sgs" {
+  count                     = length(var.allowed_source_security_group_ids)
+  type                      = "ingress"
+  from_port                 = 3306
+  to_port                   = 3306
+  protocol                  = "tcp"
+  security_group_id         = aws_security_group.rds.id
+  source_security_group_id  = var.allowed_source_security_group_ids[count.index]
+  description               = "Allow DB access from authorised security groups"
+}
+
+# Allow inbound from administrative CIDRs (use sparingly)
+resource "aws_security_group_rule" "allow_from_admin_cidrs" {
+  count             = length(var.allowed_admin_cidrs)
+  type              = "ingress"
+  from_port         = 3306
+  to_port           = 3306
+  protocol          = "tcp"
+  security_group_id = aws_security_group.rds.id
+  cidr_blocks       = [var.allowed_admin_cidrs[count.index]]
+  description       = "Admin access to DB from specific CIDR"
 }
 
 # RDS Instance
@@ -85,7 +105,11 @@ resource "aws_db_instance" "main" {
   # Network configuration
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
-  publicly_accessible    = false
+  # Match current instance configuration (currently public) to avoid
+  # Terraform attempting to replace the instance during import/first apply.
+  # After import and verification we can change this to 'false' and apply
+  # to remove public accessibility in a controlled change window.
+  publicly_accessible    = true
   multi_az              = var.multi_az
 
   # Backup configuration
@@ -105,6 +129,9 @@ resource "aws_db_instance" "main" {
   parameter_group_name = aws_db_parameter_group.main.name
   option_group_name   = aws_db_option_group.main.name
 
+  # Enable IAM database authentication if requested
+  iam_database_authentication_enabled = var.iam_database_authentication_enabled
+
   # Deletion protection (enable in production)
   deletion_protection = var.environment == "production"
 
@@ -112,6 +139,25 @@ resource "aws_db_instance" "main" {
     Name = "expose-${var.environment}-db"
   }
 
+  lifecycle {
+    # When we import an existing RDS instance, many attributes (engine, username,
+    # parameter/option groups, publicly_accessible, etc.) may differ from the
+    # values in this module. Ignoring changes for these attributes prevents
+    # Terraform from attempting to replace the instance on first apply while we
+    # transition management of network/Security Group settings.
+    ignore_changes = [
+      engine_version,
+      username,
+      db_name,
+      parameter_group_name,
+      option_group_name,
+      publicly_accessible,
+      allocated_storage,
+      instance_class,
+      kms_key_id,
+      performance_insights_kms_key_id,
+    ]
+  }
   depends_on = [
     aws_iam_role_policy_attachment.rds_enhanced_monitoring,
     aws_db_option_group.main

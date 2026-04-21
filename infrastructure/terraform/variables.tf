@@ -137,6 +137,25 @@ variable "certificate_arn" {
   default     = ""
 }
 
+# Tightening RDS access
+variable "db_allowed_security_group_ids" {
+  description = "Security groups allowed to connect to RDS (e.g. ECS/ALB SGs)"
+  type        = list(string)
+  default     = []
+}
+
+variable "db_admin_allowed_cidrs" {
+  description = "CIDR blocks allowed for short-term administrative DB access"
+  type        = list(string)
+  default     = []
+}
+
+variable "iam_database_authentication_enabled" {
+  description = "Enable IAM DB Authentication for RDS"
+  type        = bool
+  default     = true
+}
+
 # Secrets
 variable "jwt_secret" {
   description = "JWT secret key"
