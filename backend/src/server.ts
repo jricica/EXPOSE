@@ -8,6 +8,7 @@ import path from 'path';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 import uploadRoutes from './routes/upload.routes';
+import commentRoutes from './routes/comment.routes';
 import relationshipRoutes from './routes/relationship.routes';
 import messageRoutes from './routes/message.routes';
 import healthRoutes from './routes/health.routes';
@@ -92,6 +93,8 @@ if (process.env.NODE_ENV !== 'production') {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api', postRoutes);
+app.use('/api', commentRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/relationships', relationshipRoutes);
 app.use('/api/messages', messageRoutes);
