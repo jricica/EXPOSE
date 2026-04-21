@@ -9,6 +9,21 @@ export interface PublicUserProfile {
     avatar_url?: string;
 }
 
+const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+const normalizeUsername = (username: string): string => username.trim();
+
+const mapUser = (user: {
+    id: number;
+    username: string;
+    email: string;
+    passwordHash: string;
+    bio: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+    role: number;
+    createdAt: Date;
+    lastLogin: Date | null;
+}): User => ({
 const USER_SELECT = {
     id: true,
     username: true,
@@ -46,7 +61,12 @@ const mapUser = (user: UserRecord): User => ({
     friends: [],
 });
 
-const mapPublicUser = (user: PublicUserRecord): PublicUserProfile => ({
+const mapPublicUser = (user: {
+    id: number;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+}): PublicUserProfile => ({
     id: user.id,
     username: user.username,
     display_name: user.display_name ?? undefined,
@@ -98,8 +118,7 @@ export class UserRepository {
     static async findById(id: UserId): Promise<User | null> {
         return runWithRepositoryErrorHandling('findById', async () => {
             const user = await prisma.user.findUnique({
-                where: { id },
-                select: USER_SELECT,
+                where: { id }
             });
             return user ? mapUser(user) : null;
         });
@@ -108,6 +127,7 @@ export class UserRepository {
     static async findByEmail(email: string): Promise<User | null> {
         return runWithRepositoryErrorHandling('findByEmail', async () => {
             const user = await prisma.user.findUnique({
+                where: { email: normalizeEmail(email) }
                 where: { email },
                 select: USER_SELECT,
             });
@@ -118,6 +138,7 @@ export class UserRepository {
     static async findByUsername(username: string): Promise<User | null> {
         return runWithRepositoryErrorHandling('findByUsername', async () => {
             const user = await prisma.user.findUnique({
+                where: { username: normalizeUsername(username) }
                 where: { username },
                 select: USER_SELECT,
             });
@@ -138,7 +159,12 @@ export class UserRepository {
                         in: uniqueIds,
                     },
                 },
-                select: PUBLIC_USER_SELECT,
+                select: {
+                    id: true,
+                    username: true,
+                    display_name: true,
+                    avatar_url: true,
+                },
             });
 
             return users.map(mapPublicUser);
@@ -163,8 +189,8 @@ export class UserRepository {
     static async update(id: UserId, data: Partial<User>): Promise<void> {
         const payload: Prisma.UserUpdateInput = {};
 
-        if (data.username) payload.username = data.username;
-        if (data.email) payload.email = data.email;
+        if (data.username) payload.username = normalizeUsername(data.username);
+        if (data.email) payload.email = normalizeEmail(data.email);
         if (data.bio !== undefined) payload.bio = data.bio;
         if (data.display_name !== undefined) payload.display_name = data.display_name;
         if (data.avatar_url !== undefined) payload.avatar_url = data.avatar_url;

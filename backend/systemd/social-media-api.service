@@ -1,0 +1,17 @@
+[Unit]
+Description=Social Media API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/var/www/social-media
+EnvironmentFile=/var/www/social-media/.env
+ExecStart=/home/ubuntu/.nvm/versions/node/v24/bin/node dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/social-media-api.log
+StandardError=append:/var/log/social-media-api.log
+
+[Install]
+WantedBy=multi-user.target
