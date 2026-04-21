@@ -84,3 +84,8 @@ variable "existing_db_option_group_name" {
   type        = string
   default     = "default:mysql-8-4"
 }
+
+variable "rds_publicly_accessible" {
+  type    = bool
+  default = false
+}

@@ -8,6 +8,9 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
+rds_publicly_accessible           = var.rds_publicly_accessible
+allowed_source_security_group_ids = var.db_allowed_security_group_ids
+
 # Prefer existing default DB parameter group when present to avoid
 # replacing the provider-managed default groups during adoption.
 data "aws_db_parameter_group" "existing" {

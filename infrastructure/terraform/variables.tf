@@ -169,3 +169,13 @@ variable "sentry_dsn" {
   sensitive   = true
   default     = "https://46a5b92063fd5cb777eb8eea33f9fb4b@o4510751779192832.ingest.us.sentry.io/4510751781158912"
 }
+
+variable "rds_publicly_accessible" {
+  type    = bool
+  default = false
+}
+
+variable "db_allowed_security_group_ids" {
+  type    = list(string)
+  default = []
+}
