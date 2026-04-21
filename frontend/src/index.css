@@ -45,3 +45,63 @@ button {
   cursor: pointer;
   font-family: inherit;
 }
+
+/* CREATE POST */
+
+.create-post {
+  background: #121212;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #1f1f1f;
+}
+
+.create-post-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  resize: none;
+  color: #f3f3f3;
+  font-size: 15px;
+  outline: none;
+  min-height: 80px;
+}
+
+.create-post-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.char-count {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.char-count.warning {
+  color: #ffb020;
+}
+
+.char-count.danger {
+  color: #ff4d4f;
+}
+
+.create-post-button {
+  background: #1f1f1f;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: #f3f3f3;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.create-post-button:hover {
+  background: #2a2a2a;
+}
+
+.create-post-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
