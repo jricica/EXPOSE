@@ -1,6 +1,7 @@
 import winston from 'winston';
 import * as Sentry from '@sentry/node';
 import { AsyncLocalStorage } from 'async_hooks';
+import { CloudWatchLogsClient, CreateLogGroupCommand, CreateLogStreamCommand, DescribeLogStreamsCommand, PutLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs';
 
 // Async context storage for request tracking
 const asyncLocalStorage = new AsyncLocalStorage<{
@@ -41,7 +42,117 @@ const consoleFormat = winston.format.combine(
   })
 );
 
-// Create logger instance
+// Create logger instance (files + optional CloudWatch transport)
+const useCloudWatch = process.env.USE_CLOUDWATCH === 'true' || process.env.NODE_ENV === 'production';
+
+const cloudWatchLogGroup = process.env.CLOUDWATCH_LOG_GROUP || '/expose/backend/production';
+const cloudWatchLogStream = process.env.CLOUDWATCH_LOG_STREAM || process.env.HOSTNAME || 'api-server';
+
+let cwClient: CloudWatchLogsClient | undefined;
+if (useCloudWatch) {
+  cwClient = new CloudWatchLogsClient({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: process.env.AWS_ACCESS_KEY_ID ? {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
+    } : undefined
+  });
+}
+
+let cwSequenceToken: string | undefined;
+const cwQueue: Array<{ message: string; timestamp: number }> = [];
+let cwInited = false;
+
+async function initCloudWatch() {
+  if (!useCloudWatch || !cwClient) return;
+  try {
+    await cwClient.send(new CreateLogGroupCommand({ logGroupName: cloudWatchLogGroup }));
+  } catch (err: any) {
+    // ignore if exists
+  }
+  try {
+    await cwClient.send(new CreateLogStreamCommand({ logGroupName: cloudWatchLogGroup, logStreamName: cloudWatchLogStream }));
+  } catch (err: any) {
+    // ignore if exists
+  }
+  try {
+    const desc = await cwClient.send(new DescribeLogStreamsCommand({ logGroupName: cloudWatchLogGroup, logStreamNamePrefix: cloudWatchLogStream }));
+    cwSequenceToken = desc.logStreams?.[0]?.uploadSequenceToken;
+  } catch (err) {
+    // ignore
+  }
+  cwInited = true;
+}
+
+async function flushCloudWatch() {
+  if (!useCloudWatch || !cwClient || !cwInited || cwQueue.length === 0) return;
+  const events = cwQueue.splice(0, cwQueue.length)
+    .map(e => ({ message: e.message, timestamp: e.timestamp }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  try {
+    const resp = await cwClient.send(new PutLogEventsCommand({
+      logGroupName: cloudWatchLogGroup,
+      logStreamName: cloudWatchLogStream,
+      logEvents: events,
+      sequenceToken: cwSequenceToken
+    }));
+    cwSequenceToken = resp.nextSequenceToken;
+  } catch (err: any) {
+    const name = err?.name;
+    if (name === 'InvalidSequenceTokenException' || name === 'DataAlreadyAcceptedException') {
+      try {
+        const desc = await cwClient.send(new DescribeLogStreamsCommand({ logGroupName: cloudWatchLogGroup, logStreamNamePrefix: cloudWatchLogStream }));
+        cwSequenceToken = desc.logStreams?.[0]?.uploadSequenceToken;
+        const resp2 = await cwClient.send(new PutLogEventsCommand({
+          logGroupName: cloudWatchLogGroup,
+          logStreamName: cloudWatchLogStream,
+          logEvents: events,
+          sequenceToken: cwSequenceToken
+        }));
+        cwSequenceToken = resp2.nextSequenceToken;
+      } catch (err2) {
+        // drop
+      }
+    } else {
+      // drop or log
+    }
+  }
+}
+
+if (useCloudWatch) {
+  initCloudWatch().catch(() => {});
+  setInterval(() => flushCloudWatch().catch(() => {}), 2000);
+}
+
+const cloudWatchTransport: any = {
+  log: (info: any, callback?: () => void) => {
+    try {
+      const message = typeof info.message === 'string' ? info.message : JSON.stringify(info);
+      cwQueue.push({ message, timestamp: Date.now() });
+      if (cwQueue.length > 2000) {
+        cwQueue.splice(0, cwQueue.length - 2000);
+      }
+    } catch (e) {}
+    if (callback) setImmediate(callback);
+  }
+};
+
+const transportsList: any[] = [
+  new winston.transports.File({
+    filename: 'logs/error.log',
+    level: 'error',
+    format: structuredFormat
+  }),
+  new winston.transports.File({
+    filename: 'logs/combined.log',
+    format: structuredFormat
+  })
+];
+
+if (useCloudWatch) {
+  transportsList.push(cloudWatchTransport);
+}
+
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: structuredFormat,
@@ -49,19 +160,7 @@ export const logger = winston.createLogger({
     service: 'expose-backend',
     environment: process.env.NODE_ENV || 'development'
   },
-  transports: [
-    // Error log file
-    new winston.transports.File({
-      filename: 'logs/error.log',
-      level: 'error',
-      format: structuredFormat
-    }),
-    // Combined log file
-    new winston.transports.File({
-      filename: 'logs/combined.log',
-      format: structuredFormat
-    })
-  ]
+  transports: transportsList as any
 });
 
 // Add console transport for development

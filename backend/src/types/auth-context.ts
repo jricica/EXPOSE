@@ -1,11 +1,12 @@
 import { Request } from 'express';
 import { JwtPayload } from 'jsonwebtoken';
+import { UserRole } from './roles';
 
 export interface UserContext {
     userId: number;
     email: string;
     username: string;
-    role?: string;
+    role: UserRole;
 }
 
 export interface UserJwtPayload extends JwtPayload {
