@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../modules/auth/AuthContext";
 import "./Layout.css";
 
@@ -7,34 +8,34 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
 
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, "", path);
-    window.dispatchEvent(new Event("popstate"));
-  };
+  const mainPath = isAdmin ? "/admin/dashboard" : "/user/dashboard";
 
   return (
     <div className="layout-container">
       <header className="layout-header">
-        <h1 className="layout-logo" onClick={() => navigateTo("/")} style={{ cursor: "pointer" }}>
+        <h1 className="layout-logo" onClick={() => navigate(mainPath)}>
           EXPOSE
         </h1>
         {isAuthenticated ? (
-          <button className="layout-logout" onClick={() => logout()}>
-            Logout
-          </button>
+          <div className="layout-user-actions">
+            <span className="layout-user-pill">{user?.display_name || user?.username || "Cuenta"}</span>
+            <button className="layout-logout" onClick={() => logout()}>
+              Salir
+            </button>
+          </div>
         ) : (
-          <button className="layout-logout" onClick={() => navigateTo("/login")}>
-            Login
-          </button>
+          <button className="layout-logout" onClick={() => navigate("/login")}>Login</button>
         )}
       </header>
 
       <nav className="layout-nav">
-        <span onClick={() => navigateTo("/")}>Home</span>
-        <span onClick={() => navigateTo("/profile")}>Profile</span>
-        <span>Explore</span>
+        <NavLink to={mainPath}>Inicio</NavLink>
+        <NavLink to="/feed">Feed</NavLink>
+        <NavLink to="/profile">Perfil</NavLink>
+        {isAdmin && <NavLink to="/admin/dashboard">Admin</NavLink>}
       </nav>
 
       <main className="layout-content">

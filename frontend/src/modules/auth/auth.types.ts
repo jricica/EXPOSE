@@ -5,16 +5,16 @@ export interface User {
     display_name?: string;
     bio?: string;
     avatar_url?: string;
-    role: number;
+    role: number | string;
 }
 
 export interface AuthResponse {
     user: User;
-    token: {
+    token?: {
         accessToken: string;
         expiresIn: number;
     };
-    authentication_token: string;
+    authentication_token?: string;
 }
 
 export interface AuthMeResponse {

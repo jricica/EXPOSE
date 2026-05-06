@@ -1,33 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg: #090d14;
+  --surface: #111926;
+  --surface-soft: #0f141f;
+  --line: #233247;
+  --text-main: #eaf2ff;
+  --text-muted: #95a8c2;
+  --accent: #5eb1ff;
+  --accent-strong: #2c7ac4;
+
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color: #f3f3f3;
-  background-color: #0d0d0d;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #0d0d0d;
-  color: #f3f3f3;
-}
-
-#root {
-  width: 100%;
-  min-height: 100vh;
-}
-
 * {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(69, 127, 185, 0.22), transparent 30%),
+    radial-gradient(circle at 80% 0%, rgba(22, 91, 146, 0.2), transparent 35%),
+    var(--bg);
 }
 
 h1,
@@ -36,72 +45,21 @@ h3,
 h4,
 h5,
 h6 {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.02em;
   margin-top: 0;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
 }
 
 button {
   cursor: pointer;
-  font-family: inherit;
-}
-
-/* CREATE POST */
-
-.create-post {
-  background: #121212;
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 20px;
-  border: 1px solid #1f1f1f;
-}
-
-.create-post-textarea {
-  width: 100%;
-  background: transparent;
-  border: none;
-  resize: none;
-  color: #f3f3f3;
-  font-size: 15px;
-  outline: none;
-  min-height: 80px;
-}
-
-.create-post-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.char-count {
-  font-size: 0.8rem;
-  color: #777;
-}
-
-.char-count.warning {
-  color: #ffb020;
-}
-
-.char-count.danger {
-  color: #ff4d4f;
-}
-
-.create-post-button {
-  background: #1f1f1f;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 999px;
-  color: #f3f3f3;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.create-post-button:hover {
-  background: #2a2a2a;
-}
-
-.create-post-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }

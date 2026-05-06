@@ -5,9 +5,10 @@ import "./Profile.css";
 import { profileService } from "./profile.service";
 
 const Profile = () => {
-  const { user, login } = useAuth();
+  const { user, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     display_name: user?.display_name || "",
     bio: user?.bio || "",
@@ -29,18 +30,17 @@ const Profile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage(null);
+
     try {
       const updatedUser = await profileService.updateProfile(formData);
-      // Actualizar el contexto de auth con los nuevos datos
-      // Necesitamos el token actual para llamar a login
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        login(token, updatedUser);
-      }
+
+      setUser(updatedUser);
       setIsEditing(false);
+      setMessage("Perfil actualizado correctamente");
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("No se pudo actualizar el perfil.");
+      setMessage("No se pudo actualizar el perfil");
     } finally {
       setLoading(false);
     }
@@ -63,6 +63,7 @@ const Profile = () => {
               <h2>{user?.display_name || user?.username || "Usuario"}</h2>
               <p className="profile-alias">@{user?.username}</p>
               {user?.bio && <p className="profile-bio">{user.bio}</p>}
+              <p className="profile-status">Rol: {user?.role === 0 || user?.role === "admin" ? "Admin" : "Usuario"}</p>
               {!isEditing && (
                 <button className="edit-profile-btn" onClick={handleEditToggle}>
                   Editar Perfil
@@ -70,6 +71,7 @@ const Profile = () => {
               )}
             </div>
           </div>
+          {message ? <p className="profile-message">{message}</p> : null}
         </section>
 
         {isEditing && (
@@ -114,12 +116,11 @@ const Profile = () => {
           </section>
         )}
 
-        {/* Mantenemos la sección de publicaciones aunque sean mock por ahora */}
         <section className="profile-posts">
-          <h3>Publicaciones recientes</h3>
+          <h3>Estado de la cuenta</h3>
           <div className="profile-post">
-            <p>Tus momentos efímeros aparecerán aquí.</p>
-            <span>Ejemplo de publicación</span>
+            <p>Tu perfil esta listo para interactuar con feed, likes y comentarios.</p>
+            <span>Actualiza tus datos para mejorar tu presencia en la plataforma.</span>
           </div>
         </section>
       </div>

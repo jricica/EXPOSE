@@ -1,22 +1,28 @@
 .notfound-container {
-    text-align: center;
-    padding: 4rem;
-  }
-  
-  .notfound-title {
-    font-size: 5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .notfound-text {
-    margin-bottom: 2rem;
-    font-size: 1.2rem;
-  }
-  
-  .notfound-button {
-    padding: 0.8rem 1.5rem;
-    background-color: black;
-    color: white;
-    text-decoration: none;
-    border-radius: 6px;
-  }
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1.2rem;
+}
+
+.notfound-title {
+  margin: 0;
+  font-size: clamp(3rem, 12vw, 6.5rem);
+}
+
+.notfound-text {
+  margin: 0.5rem 0 1.4rem;
+  color: var(--text-muted);
+}
+
+.notfound-button {
+  border: 1px solid #2f5a84;
+  border-radius: 12px;
+  padding: 0.65rem 1.2rem;
+  color: #d9ebff;
+  text-decoration: none;
+  background: #17304d;
+}

@@ -1,16 +1,26 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import "./Login.css";
-import { authService } from "./auth.service";
+import { authService, resolveAuthToken } from "./auth.service";
 import { useAuth } from "./AuthContext";
 
-const Login: React.FC = () => {
-  const { setUser } = useAuth();
+const Login = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { login, isAuthenticated, isAdmin } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const redirectTo = useMemo(() => searchParams.get("from") || "", [searchParams]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    navigate(isAdmin ? '/admin/dashboard' : '/user/dashboard', { replace: true });
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,15 +35,26 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      const data = await authService.login(email, password);
+      const data = await authService.login(email.trim(), password);
+      const accessToken = resolveAuthToken(data);
 
-      localStorage.setItem("token", data.token);
+      if (!accessToken) {
+        throw new Error("No se recibio token de acceso");
+      }
 
-      setUser(data.user);
+      login(accessToken, data.user);
 
-      window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message);
+      if (redirectTo) {
+        navigate(redirectTo, { replace: true });
+        return;
+      }
+
+      navigate(data.user.role === 0 || data.user.role === "admin" ? "/admin/dashboard" : "/user/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "No se pudo iniciar sesion";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -44,10 +65,8 @@ const Login: React.FC = () => {
       <div className="login-card">
         <h1 className="login-title">EXPOSE</h1>
 
-        <p className="login-subtitle">
-          <div className="login-divider" />
-          Share the moment. Disappear.
-        </p>
+        <p className="login-subtitle">Tu comunidad en tiempo real, sin friccion.</p>
+        <div className="login-divider" />
 
         <form className="login-form" onSubmit={handleSubmit}>
           <input
@@ -68,27 +87,22 @@ const Login: React.FC = () => {
             disabled={loading}
           />
 
-          {/* 🔥 ERROR UX */}
           {error && <p className="login-error">{error}</p>}
 
           <button type="submit" className="login-button" disabled={loading}>
-            {loading ? "Cargando..." : "Enter"}
+            {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
         <div className="login-footer">
-          <button
-            type="button"
-            className="login-link"
-            disabled={loading}
-          >
-            Don't have an account? Register
-          </button>
+          <Link className="login-link" to="/register">
+            No tienes cuenta? Crear una
+          </Link>
         </div>
 
         <div className="login-info">
-          <p>No profiles. No likes.</p>
-          <p>Posts disappear in hours.</p>
+          <p>Publica, explora y conversa.</p>
+          <p>Panel personalizado para usuario y admin.</p>
         </div>
       </div>
     </div>

@@ -1,58 +1,81 @@
 .layout-container {
   width: 100%;
   min-height: 100vh;
-  background-color: #0f0f0f;
-  color: white;
+  color: var(--text-main);
   display: flex;
   flex-direction: column;
 }
 
 .layout-header {
-  height: 60px;
-  padding: 0 2rem;
+  padding: 0.8rem 1.2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(6px);
 }
 
 .layout-logo {
-  font-size: 1.2rem;
-  letter-spacing: 0.2em;
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.layout-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.layout-user-pill {
+  border: 1px solid #365579;
+  border-radius: 999px;
+  padding: 0.26rem 0.62rem;
+  font-size: 0.75rem;
+  color: #b6d7ff;
+  background: #14253b;
 }
 
 .layout-logout {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  font-size: 0.8rem;
+  border: 1px solid #2f4c72;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  color: #d5e7ff;
+  background: #16253a;
 }
 
 .layout-logout:hover {
-  color: white;
+  border-color: #3f6a98;
 }
 
 .layout-nav {
   display: flex;
-  gap: 2rem;
-  padding: 1rem 2rem;
-  font-size: 0.85rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.65rem;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
 }
 
-.layout-nav span {
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.6);
+.layout-nav a {
+  text-decoration: none;
+  color: var(--text-muted);
+  padding: 0.34rem 0.64rem;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
-.layout-nav span:hover {
-  color: white;
+.layout-nav a:hover,
+.layout-nav a.active {
+  color: #f0f8ff;
+  background: #1b314f;
 }
 
 .layout-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1rem;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -60,17 +83,21 @@
 
 .layout-inner {
   width: 100%;
-  max-width: 900px;
+  max-width: 980px;
   margin: 0 auto;
 }
 
+@media (min-width: 840px) {
+  .layout-header {
+    padding: 1rem 2rem;
+  }
 
-.layout-inner h2 {
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
+  .layout-nav {
+    padding: 0.8rem 2rem;
+    gap: 1rem;
+  }
 
-.layout-inner p {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.9rem;
+  .layout-content {
+    padding: 1.4rem 2rem 2rem;
+  }
 }

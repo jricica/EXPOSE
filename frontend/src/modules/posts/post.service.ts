@@ -1,5 +1,6 @@
 import { get, put } from '../../../services/api';
-import { FeedResponse, LikeState, PostItem } from './post.types';
+import { post } from '../../../services/api';
+import { FeedResponse, LikeState, PostComment, PostItem } from './post.types';
 
 export type FeedCursor = {
   cursorCreatedAt: string;
@@ -21,5 +22,13 @@ export const postService = {
 
   async setLike(postId: number, liked: boolean): Promise<LikeState> {
     return put<LikeState>(`/posts/${postId}/like`, { liked });
+  },
+
+  async createPost(content: string): Promise<PostItem> {
+    return post<PostItem>('/posts', { content });
+  },
+
+  async addComment(postId: number, content: string): Promise<PostComment> {
+    return post<PostComment>(`/posts/${postId}/comments`, { content });
   },
 };

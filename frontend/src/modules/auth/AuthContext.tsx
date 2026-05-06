@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { setToken as setApiToken, setUnauthorizedHandler } from '../../../services/api';
 import { authService } from './auth.service';
 
@@ -9,15 +9,17 @@ type AuthUser = {
   display_name?: string;
   bio?: string;
   avatar_url?: string;
+  role?: number | string;
 };
 
 type AuthContextValue = {
   token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: (redirect?: boolean) => void;
-  setUser: (user: AuthUser | null) => void; 
+  setUser: (user: AuthUser | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -39,6 +41,16 @@ export const redirectToLogin = () => {
   window.location.replace(`/login?${params.toString()}`);
 };
 
+const isAdminRole = (role: number | string | undefined): boolean => {
+  if (role === undefined || role === null) return false;
+  if (typeof role === 'string') {
+    const normalized = role.trim().toLowerCase();
+    return normalized === 'admin' || normalized === '0';
+  }
+
+  return role === 0;
+};
+
 type AuthProviderProps = {
   children: ReactNode;
 };
@@ -47,15 +59,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(null);
   const [user, setUserState] = useState<AuthUser | null>(null);
 
+  const clearAuth = () => {
+    setTokenState(null);
+    setUserState(null);
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem('token');
+    setApiToken(null);
+  };
+
   useEffect(() => {
     let active = true;
 
-    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY) ?? localStorage.getItem('token');
     const storedUser = localStorage.getItem(USER_STORAGE_KEY);
 
     const bootstrapAuth = async () => {
       if (!storedToken) {
-        cleanupAuth();
+        clearAuth();
         return;
       }
 
@@ -79,16 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
       } catch {
         if (!active) return;
-        cleanupAuth();
+        clearAuth();
       }
-    };
-
-    const cleanupAuth = () => {
-      setTokenState(null);
-      setUserState(null);
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-      localStorage.removeItem(USER_STORAGE_KEY);
-      setApiToken(null);
     };
 
     setUnauthorizedHandler(() => {
@@ -109,19 +122,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUserState(userData);
 
     localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
+    localStorage.setItem('token', newToken);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
 
     setApiToken(newToken);
   };
 
   const logout = (redirect = true) => {
-    setTokenState(null);
-    setUserState(null);
-
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
-
-    setApiToken(null);
+    clearAuth();
 
     if (redirect) {
       redirectToLogin();
@@ -138,10 +146,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const isAdmin = useMemo(() => isAdminRole(user?.role), [user?.role]);
+
   const value: AuthContextValue = {
     token,
     user,
     isAuthenticated: Boolean(token),
+    isAdmin,
     login,
     logout,
     setUser,

@@ -1,52 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { HttpError } from "../../../services/api";
-import { useAuth } from "../auth/AuthContext";
-import { FeedCursor, postService } from "../posts/post.service";
-import { PostItem } from "../posts/post.types";
+import { useEffect, useMemo, useState } from 'react';
+import { HttpError } from '../../../services/api';
+import Layout from '../../components/Layout';
+import { useAuth } from '../auth/AuthContext';
+import { postService, type FeedCursor } from '../posts/post.service';
+import type { PostItem } from '../posts/post.types';
+import './Feed.css';
 
-
-const Feed: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-
+const Feed = () => {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<PostItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
   const [nextCursor, setNextCursor] = useState<FeedCursor | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
-  const [loadingDetailPostId, setLoadingDetailPostId] = useState<number | null>(null);
+  const [submittingCommentFor, setSubmittingCommentFor] = useState<number | null>(null);
 
-  // estado para filtro
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
-
-  const loadPosts = async (cursor?: FeedCursor, isInitial: boolean = false) => {
+  const loadPosts = async (cursor?: FeedCursor, initial = false) => {
     try {
-      if (isInitial) {
+      if (initial) {
         setLoading(true);
       } else {
         setLoadingMore(true);
       }
+
       setError(null);
+
       const response = await postService.listFeed(20, cursor);
 
-      const newPosts = response.posts || [];
-      const pagination = response.pagination || { nextCursor: null };
-
-      if (isInitial) {
-        setPosts(newPosts);
+      if (initial) {
+        setPosts(response.posts || []);
       } else {
-        setPosts((prev) => [...prev, ...newPosts]);
+        setPosts((prev) => [...prev, ...(response.posts || [])]);
       }
 
-      setNextCursor(pagination.nextCursor);
+      setNextCursor(response.pagination?.nextCursor || null);
     } catch (err) {
       if (err instanceof HttpError) {
         setError(err.message || `Error ${err.status}`);
-      } else if (err instanceof Error) {
-        setError(err.message);
       } else {
-        setError("Error desconocido al cargar el feed");
+        setError(err instanceof Error ? err.message : 'Error cargando el feed');
       }
     } finally {
       setLoading(false);
@@ -55,247 +52,155 @@ const Feed: React.FC = () => {
   };
 
   useEffect(() => {
-    loadPosts(undefined, true);
+    void loadPosts(undefined, true);
   }, []);
 
-  const handleLoadMore = () => {
-    if (!loadingMore && nextCursor) {
-      loadPosts(nextCursor);
-    }
-  };
+  const filteredPosts = useMemo(() => {
+    if (!showOnlyMine || !user) return posts;
+    return posts.filter((post) => post.userId === user.id);
+  }, [posts, showOnlyMine, user]);
 
   const handleSetLike = async (postId: number, liked: boolean) => {
     try {
       const state = await postService.setLike(postId, liked);
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId
-            ? { ...post, likes: state.likes, likedByMe: state.likedByMe }
-            : post,
-        ),
+      setPosts((prev) =>
+        prev.map((post) => (post.id === postId ? { ...post, likes: state.likes, likedByMe: state.likedByMe } : post)),
       );
     } catch (err) {
-      if (err instanceof HttpError) {
-        setError(err.message || `Error ${err.status}`);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('No se pudo actualizar el like');
-      }
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar like');
     }
   };
 
-  const handleToggleDetails = async (postId: number) => {
-    if (expandedPostId === postId) {
-      setExpandedPostId(null);
+  const handlePublish = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!draft.trim()) {
       return;
     }
 
     try {
-      setLoadingDetailPostId(postId);
-      const detail = await postService.getPostDetail(postId);
+      setPublishing(true);
+      setError(null);
 
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
+      const created = await postService.createPost(draft.trim());
+      setDraft('');
+      setPosts((prev) => [created, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear el post');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleSendComment = async (postId: number) => {
+    const content = commentDrafts[postId]?.trim() || '';
+
+    if (!content) {
+      return;
+    }
+
+    try {
+      setSubmittingCommentFor(postId);
+      await postService.addComment(postId, content);
+      setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
+      setPosts((prev) =>
+        prev.map((post) =>
           post.id === postId
             ? {
                 ...post,
-                likes: detail.likes,
-                likedByMe: detail.likedByMe,
-                commentCount: detail.commentCount,
-                shareCount: detail.shareCount,
+                commentCount: (post.commentCount || 0) + 1,
               }
             : post,
         ),
       );
-
-      setExpandedPostId(postId);
     } catch (err) {
-      if (err instanceof HttpError) {
-        setError(err.message || `Error ${err.status}`);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('No se pudo cargar el detalle del post');
-      }
+      setError(err instanceof Error ? err.message : 'No se pudo comentar');
     } finally {
-      setLoadingDetailPostId(null);
+      setSubmittingCommentFor(null);
     }
   };
 
-  // posts filtrados - Asegurar que posts sea un array
-  const filteredPosts = Array.isArray(posts)
-    ? (showOnlyMine && user
-      ? posts.filter((post) => post.userId === user.id)
-      : posts)
-    : [];
-
-  if (loading) {
-    return <div style={{ padding: "1rem" }}>Cargando feed...</div>;
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: "1rem", color: "#b00020" }}>
-        Error al cargar el feed: {error}
-        {!isAuthenticated && " (puedes iniciar sesión para más contenido)"}
-      </div>
-    );
-  }
-
-  if (!filteredPosts.length) {
-    return (
-      <div
-        style={{
-          padding: "3rem",
-          textAlign: "center",
-          opacity: 0.85,
-        }}
-      >
-        <div style={{ fontSize: 42 }}>📭</div>
-        <h3 style={{ marginTop: 12 }}>Nada por aquí</h3>
-
-        <p style={{ fontSize: 14 }}>
-          {showOnlyMine
-            ? "Todavía no has publicado nada."
-            : "Cuando haya publicaciones, aparecerán aquí."}
-        </p>
-
-        {isAuthenticated && (
-          <button
-            onClick={() => setShowOnlyMine(!showOnlyMine)}
-            style={{ marginTop: 16 }}
-          >
-            {showOnlyMine ? "Ver todos los posts" : "Ver solo mis posts"}
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: "1rem", display: "grid", gap: "12px" }}>
-      {isAuthenticated && (
-        <button
-          onClick={() => setShowOnlyMine(!showOnlyMine)}
-          style={{
-            marginBottom: "1rem",
-            alignSelf: "flex-start",
-          }}
-        >
-          {showOnlyMine ? "Ver todos los posts" : "Mis posts"}
-        </button>
-      )}
+    <Layout>
+      <section className="feed-shell">
+        <div className="feed-topbar">
+          <h2>Feed en vivo</h2>
+          <button className="feed-filter" onClick={() => setShowOnlyMine((value) => !value)}>
+            {showOnlyMine ? 'Mostrando: mis posts' : 'Mostrando: todo'}
+          </button>
+        </div>
 
-      {filteredPosts.map((post) => (
-        <article
-          key={post.id}
-          style={{
-            border: "1px solid #222",
-            borderRadius: 8,
-            padding: "12px 14px",
-            background: "#0f0f0f",
-            color: "#f3f3f3",
-          }}
-        >
-          <p style={{ margin: 0 }}>{post.content}</p>
-
-          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
-            <span>{post.likes ?? 0} likes</span>
-            {isAuthenticated && (
-              <span style={{ marginLeft: 12, color: post.likedByMe ? '#7CFC9A' : '#aaa' }}>
-                {post.likedByMe ? 'Te gusta' : 'Aun no te gusta'}
-              </span>
-            )}
-
-            {post.createdAt && (
-              <span style={{ marginLeft: 12 }}>
-                Publicado: {new Date(post.createdAt).toLocaleString()}
-              </span>
-            )}
+        <form className="feed-create" onSubmit={handlePublish}>
+          <textarea
+            placeholder="Comparte algo con tu comunidad..."
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            maxLength={280}
+          />
+          <div className="feed-create-footer">
+            <span>{280 - draft.length} caracteres</span>
+            <button type="submit" disabled={publishing || !draft.trim()}>
+              {publishing ? 'Publicando...' : 'Publicar'}
+            </button>
           </div>
+        </form>
 
-          {isAuthenticated && (
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => handleSetLike(post.id, !Boolean(post.likedByMe))}
-                style={{
-                  border: '1px solid #555',
-                  borderRadius: 6,
-                  padding: '6px 10px',
-                  background: post.likedByMe ? '#173824' : 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                {post.likedByMe ? 'Ya no me gusta' : 'Me gusta'}
+        {error ? <p className="feed-error">{error}</p> : null}
+        {loading ? <p className="feed-empty">Cargando publicaciones...</p> : null}
+
+        {!loading && filteredPosts.length === 0 ? (
+          <p className="feed-empty">No hay publicaciones para este filtro todavia.</p>
+        ) : null}
+
+        {filteredPosts.map((post) => (
+          <article key={post.id} className="feed-card">
+            <p className="feed-content">{post.content}</p>
+            <div className="feed-meta">
+              <span>{post.likes || 0} likes</span>
+              <span>{post.commentCount || 0} comentarios</span>
+              <span>{new Date(post.createdAt).toLocaleString()}</span>
+            </div>
+
+            <div className="feed-actions">
+              <button onClick={() => handleSetLike(post.id, !Boolean(post.likedByMe))}>
+                {post.likedByMe ? 'Quitar like' : 'Dar like'}
               </button>
-
-              <button
-                onClick={() => handleToggleDetails(post.id)}
-                style={{
-                  border: '1px solid #555',
-                  borderRadius: 6,
-                  padding: '6px 10px',
-                  background: 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                {loadingDetailPostId === post.id
-                  ? 'Cargando...'
-                  : expandedPostId === post.id
-                  ? 'Ocultar detalles'
-                  : 'Mostrar detalles'}
+              <button onClick={() => setExpandedPostId((id) => (id === post.id ? null : post.id))}>
+                {expandedPostId === post.id ? 'Ocultar' : 'Comentar'}
               </button>
             </div>
-          )}
 
-          {expandedPostId === post.id && (
-            <section style={{ marginTop: 12, borderTop: '1px solid #2a2a2a', paddingTop: 12 }}>
-              <h4 style={{ margin: '0 0 8px 0', fontSize: 14 }}>Comentarios y Actividad</h4>
-              <input
-                type="text"
-                value={commentDrafts[post.id] ?? ''}
-                onChange={(event) =>
-                  setCommentDrafts((drafts) => ({
-                    ...drafts,
-                    [post.id]: event.target.value,
-                  }))
-                }
-                placeholder="Escribe un comentario..."
-                style={{
-                  width: '100%',
-                  border: '1px solid #444',
-                  borderRadius: 6,
-                  padding: '8px 10px',
-                  background: '#121212',
-                  color: '#f3f3f3',
-                }}
-              />
-            </section>
-          )}
-        </article>
-      ))}
+            {expandedPostId === post.id ? (
+              <div className="feed-comment-box">
+                <input
+                  type="text"
+                  placeholder="Escribe un comentario"
+                  value={commentDrafts[post.id] || ''}
+                  onChange={(event) =>
+                    setCommentDrafts((prev) => ({
+                      ...prev,
+                      [post.id]: event.target.value,
+                    }))
+                  }
+                />
+                <button
+                  onClick={() => void handleSendComment(post.id)}
+                  disabled={submittingCommentFor === post.id || !(commentDrafts[post.id] || '').trim()}
+                >
+                  {submittingCommentFor === post.id ? 'Enviando...' : 'Enviar'}
+                </button>
+              </div>
+            ) : null}
+          </article>
+        ))}
 
-      {nextCursor && (
-        <button
-          onClick={handleLoadMore}
-          disabled={loadingMore}
-          style={{
-            marginTop: "1rem",
-            padding: "10px",
-            background: "transparent",
-            border: "1px solid #444",
-            color: "#fff",
-            borderRadius: "4px",
-            cursor: loadingMore ? "not-allowed" : "pointer"
-          }}
-        >
-          {loadingMore ? "Cargando más..." : "Cargar más"}
-        </button>
-      )}
-    </div>
+        {nextCursor ? (
+          <button className="feed-load-more" onClick={() => void loadPosts(nextCursor)} disabled={loadingMore}>
+            {loadingMore ? 'Cargando...' : 'Cargar mas'}
+          </button>
+        ) : null}
+      </section>
+    </Layout>
   );
 };
 

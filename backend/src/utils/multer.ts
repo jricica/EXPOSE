@@ -37,7 +37,7 @@ const storage: multer.StorageEngine = multer.diskStorage({
     const ext = mimeToExtension[file.mimetype];
 
     if (!ext) {
-      return cb(new Error('Extensión no soportada'));
+      return cb(new Error('Extensión no soportada'), '');
     }
 
     const randomName = crypto.randomBytes(16).toString('hex');

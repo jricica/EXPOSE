@@ -35,3 +35,11 @@ export type LikeState = {
   likes: number;
   likedByMe: boolean;
 };
+
+export type PostComment = {
+  id: string;
+  postId: number;
+  userId: number;
+  content: string;
+  createdAt: string;
+};
