@@ -28,7 +28,7 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
 
       // Validar que el rol del usuario está en la lista de roles permitidos
       // Por defecto, si no hay rol, consideramos que es un usuario regular (rol 1)
-      const userRoleValue: UserRole = userRole === undefined ? 1 : (userRole as UserRole);
+      const userRoleValue: UserRole = userRole ?? 1;
 
       if (!allowedRoles.includes(userRoleValue)) {
         Sentry.captureMessage(`Unauthorized role access attempt`, {

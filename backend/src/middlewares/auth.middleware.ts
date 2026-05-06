@@ -16,6 +16,7 @@ import {
 } from '../config/env';
 import { UserRepository } from '../repositories/user.repository';
 import { UserContext, UnauthorizedError, AuthRequest, UserJwtPayload } from '../types/auth-context';
+import { UserRole } from '../types/roles';
 
 const jwtVerifyOptions: jwt.VerifyOptions = {
   algorithms: [...JWT_ALLOWED_ALGORITHMS],
@@ -118,7 +119,7 @@ export const authMiddleware = async (
       userId: user.id,
       email: user.email,
       username: user.username,
-      role: decoded.role,
+      role: normalizeRole(decoded.role),
     };
 
     // Casting a AuthRequest para evitar errores de compilación
@@ -165,7 +166,7 @@ export const optionalAuthMiddleware = async (
         userId: user.id,
         email: user.email,
         username: user.username,
-        role: decoded.role,
+        role: normalizeRole(decoded.role),
       };
 
       const extendedReq = req as AuthRequest;
@@ -178,4 +179,14 @@ export const optionalAuthMiddleware = async (
   }
 
   return next();
+};
+
+const normalizeRole = (role: unknown): UserRole => {
+  const parsed = Number(role);
+
+  if (parsed === 0 || parsed === 1) {
+    return parsed;
+  }
+
+  throw new UnauthorizedError('Invalid role in token');
 };
