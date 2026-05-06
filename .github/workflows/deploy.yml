@@ -1,35 +1,52 @@
 # .github/workflows/deploy.yml
-# IMPORTANTE: 
-# pendiente de configurar el deploy a AWS, por ahora solo se ejecuta el build para verificar que no haya errores en el proceso de construcción del proyecto.
-name: Deploy
+name: CI/CD Pipeline to EC2
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - run: npm ci
-      - run: npm run build
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
-
-      - name: Deploy (placeholder)
-        run: echo "Deploy your service here"
-
-      - name: Run DB migrations
-        run: npx prisma migrate deploy
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
+            # Navegar al directorio de la app
+            cd /var/www/social-media
+            
+            # Descargar código más reciente
+            git pull origin main
+            
+            # Frontend
+            cd frontend
+            npm ci
+            npm run build
+            
+            # Backend
+            cd ../backend
+            npm ci
+            npm run build
+            
+            # Ejecutar migraciones de Prisma
+            npx prisma migrate deploy
+            
+            # Reiniciar servicio con Systemd
+            sudo systemctl restart social-media-api
+            
+            echo "🚀 Deployment exitoso!"
