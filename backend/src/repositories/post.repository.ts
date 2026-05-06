@@ -504,6 +504,41 @@ export class PostRepository {
     );
   }
 
+  async purgeExpired(): Promise<number> {
+    const nowIso = new Date().toISOString();
+    let count = 0;
+    let lastEvaluatedKey: Record<string, any> | undefined;
+
+    do {
+      const result = await ddbDocClient.send(
+        new ScanCommand({
+          TableName: TABLES.FEED,
+          FilterExpression: 'expiresAt <= :now AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+          ExpressionAttributeValues: { ':now': nowIso, ':true': true },
+          ProjectionExpression: 'postId',
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      const items = result.Items ?? [];
+      lastEvaluatedKey = result.LastEvaluatedKey as Record<string, any> | undefined;
+
+      for (const item of items) {
+        await ddbDocClient.send(
+          new UpdateCommand({
+            TableName: TABLES.FEED,
+            Key: { postId: item.postId },
+            UpdateExpression: 'SET is_deleted = :true',
+            ExpressionAttributeValues: { ':true': true },
+          })
+        );
+        count++;
+      }
+    } while (lastEvaluatedKey);
+
+    return count;
+  }
+
   async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
     const currentlyLiked = await this.userLiked(postId, userId);
     return this.setLike(postId, userId, !currentlyLiked);

@@ -5,6 +5,16 @@ import { getUserId } from "../utils/auth";
 
 const userService = new UserService(userRepository);
 
+export const searchUsers = async (req: Request, res: Response) => {
+  try {
+    const query = String(req.query.search ?? '');
+    const results = await userService.searchUsers(query);
+    res.json(results);
+  } catch {
+    res.status(500).json({ message: 'Error al buscar usuarios' });
+  }
+};
+
 export const getUser = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);

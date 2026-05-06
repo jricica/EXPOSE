@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import jwt from "jsonwebtoken";
+import bcrypt from 'bcrypt';
 import { User } from "../models/user.model";
 import { userRepository } from "../repositories/user.repository";
 import {
@@ -69,6 +70,52 @@ export class AuthService {
     if (!user) throw new Error("Usuario no encontrado");
     const { passwordHash: _, ...publicUser } = user;
     return publicUser;
+  }
+
+  /**
+   * Generate a short-lived password reset token (JWT). Returns null if email not found.
+   */
+  async generatePasswordResetToken(email: string): Promise<string | null> {
+    const user = await userRepository.findByEmail(email);
+    if (!user) return null;
+    const token = jwt.sign({ sub: user.id.toString(), purpose: 'pwd_reset' }, JWT_SECRET, {
+      expiresIn: '1h',
+      algorithm: JWT_ALGORITHM,
+    });
+    return token;
+  }
+
+  /**
+   * Verify reset token and update password
+   */
+  async resetPasswordWithToken(token: string, newPassword: string): Promise<void> {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET, { algorithms: [JWT_ALGORITHM] }) as any;
+      if (payload?.purpose !== 'pwd_reset') throw new Error('Invalid token');
+      const userId = Number(payload.sub);
+      if (!Number.isInteger(userId) || userId <= 0) throw new Error('Invalid token');
+      const user = await userRepository.findById(userId);
+      if (!user) throw new Error('Invalid token');
+      validatePassword(newPassword, { email: user.email, username: user.username });
+      const hash = await bcrypt.hash(newPassword, 10);
+      await userRepository.updatePassword(userId, hash);
+    } catch (err) {
+      Sentry.captureException(err);
+      throw new Error('Invalid or expired token');
+    }
+  }
+
+  /**
+   * Change password for authenticated user (requires old password)
+   */
+  async changePassword(userId: number, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new Error('User not found');
+    const ok = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!ok) throw new Error('Invalid old password');
+    validatePassword(newPassword, { email: user.email, username: user.username });
+    const hash = await bcrypt.hash(newPassword, 10);
+    await userRepository.updatePassword(userId, hash);
   }
 
   private buildResponse(user: Omit<User, 'passwordHash'>): LoginResponse {
