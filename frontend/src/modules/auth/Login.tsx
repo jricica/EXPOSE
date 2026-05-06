@@ -65,13 +65,13 @@ const Login = () => {
       <div className="login-card">
         <h1 className="login-title">EXPOSE</h1>
 
-        <p className="login-subtitle">Tu comunidad en tiempo real, sin friccion.</p>
+        <p className="login-subtitle">Entrá al canal. Nada aquí está hecho para quedarse.</p>
         <div className="login-divider" />
 
         <form className="login-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Username or email"
+            placeholder="Alias o email"
             className="login-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -80,7 +80,7 @@ const Login = () => {
 
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Clave de acceso"
             className="login-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -90,19 +90,19 @@ const Login = () => {
           {error && <p className="login-error">{error}</p>}
 
           <button type="submit" className="login-button" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+          {loading ? "Abriendo canal..." : "Entrar"}
           </button>
         </form>
 
         <div className="login-footer">
           <Link className="login-link" to="/register">
-            No tienes cuenta? Crear una
+          No tienes acceso? Crear identidad
           </Link>
         </div>
 
         <div className="login-info">
-          <p>Publica, explora y conversa.</p>
-          <p>Panel personalizado para usuario y admin.</p>
+        <p>Sin perfiles públicos. Sin seguidores. Sin historial permanente.</p>
+        <p>Las publicaciones nacen en el momento y desaparecen en 24H.</p>
         </div>
       </div>
     </div>

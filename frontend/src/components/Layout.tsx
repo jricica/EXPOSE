@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../modules/auth/AuthContext";
-import { Home, Compass, User as UserIcon, Shield, LogOut } from "lucide-react";
+import { Home, Radio, UserRound, Shield, LogOut } from "lucide-react";
 import "./Layout.css";
 
 interface LayoutProps {
@@ -19,52 +19,55 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="layout-container">
       <div className="floating-nav-wrapper">
         <nav className="floating-nav">
-          <div className="nav-brand" onClick={() => navigate(mainPath)}>
+          <button className="nav-brand" onClick={() => navigate(mainPath)}>
             EXPOSE
-          </div>
-          
-          <div className="nav-divider"></div>
+          </button>
 
-          <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? 'active' : ''}`}>
-            <Home size={18} /> <span className="nav-text">Inicio</span>
-          </NavLink>
-          
-          <NavLink to="/feed" className={`nav-link ${location.pathname === '/feed' ? 'active' : ''}`}>
-            <Compass size={18} /> <span className="nav-text">Feed</span>
-          </NavLink>
-          
-          <NavLink to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-            <UserIcon size={18} /> <span className="nav-text">Perfil</span>
-          </NavLink>
-          
-          {isAdmin && (
-            <NavLink to="/admin/dashboard" className={`nav-link ${location.pathname === '/admin/dashboard' ? 'active' : ''}`}>
-              <Shield size={18} /> <span className="nav-text">Admin</span>
+          <span className="nav-status">24H CHANNEL</span>
+
+          <div className="nav-links">
+            <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? "active" : ""}`}>
+              <Home size={16} />
+              <span className="nav-text">Inicio</span>
             </NavLink>
-          )}
+
+            <NavLink to="/feed" className={`nav-link ${location.pathname === "/feed" ? "active" : ""}`}>
+              <Radio size={16} />
+              <span className="nav-text">Canal</span>
+            </NavLink>
+
+            <NavLink to="/profile" className={`nav-link ${location.pathname === "/profile" ? "active" : ""}`}>
+              <UserRound size={16} />
+              <span className="nav-text">Identidad</span>
+            </NavLink>
+
+            {isAdmin && (
+              <NavLink
+                to="/admin/dashboard"
+                className={`nav-link ${location.pathname === "/admin/dashboard" ? "active" : ""}`}
+              >
+                <Shield size={16} />
+                <span className="nav-text">Admin</span>
+              </NavLink>
+            )}
+          </div>
 
           {isAuthenticated ? (
-            <>
-              <div className="nav-divider"></div>
-              <div className="nav-user">
-                <span className="nav-username">{user?.display_name || user?.username || "Usuario"}</span>
-                <button className="nav-logout" onClick={() => logout()} title="Cerrar sesión">
-                  <LogOut size={16} />
-                </button>
-              </div>
-            </>
+            <div className="nav-user">
+              <span className="nav-username">{user?.display_name || user?.username || "ANON"}</span>
+              <button className="nav-logout" onClick={() => logout()} title="Cerrar sesión">
+                <LogOut size={15} />
+              </button>
+            </div>
           ) : (
-            <>
-              <div className="nav-divider"></div>
-              <NavLink to="/login" className="nav-link active">Login</NavLink>
-            </>
+            <NavLink to="/login" className="nav-login">
+              Acceso
+            </NavLink>
           )}
         </nav>
       </div>
 
-      <main className="layout-main">
-        {children}
-      </main>
+      <main className="layout-main">{children}</main>
     </div>
   );
 };
