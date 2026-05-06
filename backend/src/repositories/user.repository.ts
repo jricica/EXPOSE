@@ -168,6 +168,27 @@ export class UserRepository {
     });
   }
 
+  static async search(query: string): Promise<PublicUserProfile[]> {
+    return runWithRepositoryErrorHandling('search', async () => {
+      const users = await prisma.user.findMany({
+        where: {
+          OR: [
+            { username: { contains: query } },
+            { display_name: { contains: query } },
+          ],
+        },
+        select: {
+          id: true,
+          username: true,
+          display_name: true,
+          avatar_url: true,
+        },
+        take: 20,
+      });
+      return users.map(mapPublicUser);
+    });
+  }
+
   static async create(data: CreateUserInput): Promise<UserId> {
     return runWithRepositoryErrorHandling('create', async () => {
       const created = await prisma.user.create({
@@ -251,6 +272,10 @@ export class UserRepository {
 
   async delete(id: UserId): Promise<void> {
     return UserRepository.delete(id);
+  }
+
+  async search(query: string): Promise<PublicUserProfile[]> {
+    return UserRepository.search(query);
   }
 }
 

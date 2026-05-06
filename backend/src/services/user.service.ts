@@ -119,6 +119,12 @@ export class UserService {
     await this.repo.delete(id);
   }
 
+  async searchUsers(query: string) {
+    const q = query.trim();
+    if (q.length < 2) return [];
+    return this.repo.search(q);
+  }
+
 }
 
 export function buildUser(input: CreateUserInput): Omit<User, "id" | "role"> {
