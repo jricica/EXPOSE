@@ -1,43 +1,104 @@
 .feed-shell {
+  width: min(900px, calc(100% - 2rem));
+  margin: 0 auto;
   display: grid;
   gap: 1rem;
 }
 
-.feed-topbar {
+.feed-hero {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
+  padding: 1.6rem;
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 3px;
+  background:
+    linear-gradient(135deg, rgba(18,18,18,0.98), rgba(3,3,3,0.98)),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 42px,
+      rgba(255,255,255,0.018) 43px
+    );
+  box-shadow: 0 30px 90px rgba(0,0,0,0.65);
 }
 
-.feed-topbar h2 {
+.feed-kicker {
+  display: inline-flex;
+  margin-bottom: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  color: #bdbdbd;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.feed-hero h1 {
   margin: 0;
+  color: #f2f2f2;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -0.08em;
+  line-height: 1;
+}
+
+.feed-hero p {
+  margin: 0.6rem 0 0;
+  max-width: 520px;
+  color: #858585;
+  font-size: 0.95rem;
+  line-height: 1.65;
 }
 
 .feed-filter {
-  background: #15253d;
-  border: 1px solid #284e76;
-  color: #b6d6f5;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  padding: 0.5rem 0.8rem;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d6d6d6;
+  border-radius: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+}
+
+.feed-filter:hover {
+  background: #eeeeee;
+  color: #050505;
+  transform: translateY(-1px);
 }
 
 .feed-create {
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  padding: 0.85rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.075);
+  background: rgba(8,8,8,0.88);
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
 }
 
 .feed-create textarea {
   width: 100%;
   resize: vertical;
-  min-height: 82px;
+  min-height: 120px;
   border: none;
   background: transparent;
-  color: var(--text-main);
-  font-family: inherit;
+  color: #eeeeee;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.feed-create textarea::placeholder {
+  color: rgba(255,255,255,0.34);
 }
 
 .feed-create textarea:focus {
@@ -49,59 +110,159 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--text-muted);
-  font-size: 0.8rem;
+  color: #777;
+  font-size: 0.78rem;
 }
 
 .feed-create-footer button {
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(130deg, #2f6ba7, #3f85c7);
-  color: #f3fbff;
-  padding: 0.5rem 0.9rem;
-  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2px;
+  background: #eeeeee;
+  color: #050505;
+  padding: 0.65rem 1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.feed-create-footer button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #ffffff;
+}
+
+.feed-create-footer button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.feed-list {
+  display: grid;
+  gap: 0.9rem;
 }
 
 .feed-card {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: linear-gradient(150deg, #141922 0%, #0f141c 100%);
-  padding: 0.9rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(14,14,14,0.98), rgba(5,5,5,0.98));
+  padding: 1.1rem;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.38);
+  transition: all 0.2s ease;
+}
+
+.feed-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.14);
+  background:
+    linear-gradient(180deg, rgba(18,18,18,0.98), rgba(5,5,5,0.98));
+}
+
+.feed-card::before {
+  content: "EXPIRES IN 24H";
+  position: absolute;
+  top: 0.9rem;
+  right: 1rem;
+  color: rgba(255,255,255,0.16);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+}
+
+.feed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-right: 8rem;
+}
+
+.feed-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: #d7d7d7;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 900;
+}
+
+.feed-author {
+  margin: 0;
+  color: #eeeeee;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: -0.03em;
+}
+
+.feed-card-header span {
+  color: #777;
+  font-size: 0.74rem;
 }
 
 .feed-content {
-  margin: 0;
-  line-height: 1.45;
+  margin: 1.05rem 0 0;
+  color: #e7e7e7;
+  font-size: 1.05rem;
+  line-height: 1.7;
 }
 
 .feed-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
-  margin-top: 0.6rem;
-  color: var(--text-muted);
-  font-size: 0.78rem;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  color: #7a7a7a;
+  font-size: 0.76rem;
+}
+
+.feed-meta span {
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.055);
 }
 
 .feed-actions {
-  margin-top: 0.8rem;
+  margin-top: 1rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .feed-actions button,
 .feed-comment-box button,
 .feed-load-more {
-  border: 1px solid #32587f;
-  border-radius: 10px;
-  background: #16293f;
-  color: #d8e9ff;
-  padding: 0.45rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.035);
+  color: #d6d6d6;
+  padding: 0.55rem 0.75rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.feed-actions button:hover,
+.feed-comment-box button:hover,
+.feed-load-more:hover {
+  transform: translateY(-1px);
+  background: #eeeeee;
+  color: #050505;
 }
 
 .feed-comment-box {
-  margin-top: 0.8rem;
+  margin-top: 0.9rem;
   display: flex;
   gap: 0.5rem;
 }
@@ -109,23 +270,65 @@
 .feed-comment-box input {
   flex: 1;
   min-width: 0;
-  border: 1px solid #25364f;
-  border-radius: 10px;
-  background: #111925;
-  color: #eef5ff;
-  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  background: rgba(0,0,0,0.35);
+  color: #eeeeee;
+  padding: 0.65rem 0.75rem;
+}
+
+.feed-comment-box input:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
 }
 
 .feed-load-more {
   justify-self: center;
 }
 
-.feed-error {
+.feed-notice {
   margin: 0;
-  color: #ff7f7f;
+  padding: 0.85rem 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  color: #bdbdbd;
+  font-size: 0.86rem;
 }
 
 .feed-empty {
   margin: 0;
-  color: var(--text-muted);
+  padding: 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.075);
+  color: #8a8a8a;
+  background: rgba(8,8,8,0.75);
+}
+
+@media (max-width: 720px) {
+  .feed-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .feed-filter {
+    width: 100%;
+  }
+
+  .feed-create-footer,
+  .feed-comment-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feed-card::before {
+    position: static;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .feed-card-header {
+    padding-right: 0;
+  }
 }

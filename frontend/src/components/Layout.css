@@ -2,147 +2,228 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  color: #f5f5f5;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(255,255,255,0.025), transparent 24%),
+    linear-gradient(180deg, #000 0%, #020202 45%, #050505 100%);
+}
+
+.layout-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 52px 52px;
+  opacity: 0.11;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at center, black 20%, transparent 82%);
+}
+
+.layout-container::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 38%, rgba(0,0,0,0.72) 100%);
+  pointer-events: none;
 }
 
 .floating-nav-wrapper {
   position: fixed;
-  top: 1.5rem;
+  top: 1rem;
   left: 0;
   width: 100%;
-  display: flex;
-  justify-content: center;
   z-index: 100;
-  pointer-events: none;
   padding: 0 1rem;
+  pointer-events: none;
 }
 
 .floating-nav {
   pointer-events: auto;
-  display: flex;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem;
-  border-radius: 999px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-.floating-nav::-webkit-scrollbar {
-  display: none;
+  gap: 1rem;
+  background: rgba(5,5,5,0.88);
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 3px;
+  padding: 0.65rem 0.75rem;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .nav-brand {
-  font-family: 'Space Grotesk', sans-serif;
+  border: none;
+  background: transparent;
+  font-family: 'IBM Plex Mono', monospace;
   font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: 0.15em;
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-  color: #fff;
+  font-size: 0.86rem;
+  letter-spacing: 0.38em;
+  color: #eeeeee;
   cursor: pointer;
-  background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  transition: opacity 0.2s;
+  text-transform: uppercase;
+  padding: 0.45rem 0.2rem 0.45rem 0.45rem;
 }
 
 .nav-brand:hover {
-  opacity: 0.8;
+  color: #ffffff;
 }
 
-.nav-link {
+.nav-status {
+  color: rgba(255,255,255,0.32);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255,255,255,0.075);
+}
+
+.nav-links {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  border-radius: 999px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
-.nav-link:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.05);
+.nav-link,
+.nav-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(255,255,255,0.42);
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.62rem 0.78rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-login:hover {
+  color: #eeeeee;
+  background: rgba(255,255,255,0.035);
 }
 
 .nav-link.active {
-  color: #fff;
-  background: rgba(59, 130, 246, 0.15);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+  color: #050505;
+  background: #eeeeee;
+  border-color: rgba(255,255,255,0.14);
 }
 
-.nav-divider {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 0.25rem;
-  flex-shrink: 0;
+.nav-login {
+  color: #050505;
+  background: #eeeeee;
+  border-color: rgba(255,255,255,0.14);
 }
 
 .nav-user {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0.25rem 0.25rem 1rem;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  flex-shrink: 0;
+  gap: 0.55rem;
+  justify-self: end;
+  border-left: 1px solid rgba(255,255,255,0.075);
+  padding-left: 1rem;
 }
 
 .nav-username {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-main);
-  max-width: 100px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.58);
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .nav-logout {
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  color: rgba(255,255,255,0.58);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-logout:hover {
-  background: #ef4444;
-  color: #fff;
-  transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  background: #eeeeee;
+  color: #050505;
 }
 
 .layout-main {
-  padding-top: 7rem;
+  padding-top: 6.8rem;
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 820px) {
+  .floating-nav {
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+  }
+
+  .nav-status {
+    display: none;
+  }
+
+  .nav-links {
+    grid-column: 1 / -1;
+    order: 3;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-user,
+  .nav-login {
+    justify-self: end;
+  }
+
+  .layout-main {
+    padding-top: 8.7rem;
+  }
+}
+
+@media (max-width: 520px) {
   .nav-text {
     display: none;
   }
+
   .nav-link {
-    padding: 0.6rem;
-    justify-content: center;
+    padding: 0.62rem;
+  }
+
+  .nav-brand {
+    font-size: 0.78rem;
+    letter-spacing: 0.28em;
+  }
+
+  .nav-username {
+    display: none;
   }
 }

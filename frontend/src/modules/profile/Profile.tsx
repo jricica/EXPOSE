@@ -17,13 +17,13 @@ const Profile = () => {
     bio: user?.bio || "",
     avatar_url: user?.avatar_url || "",
   });
-  const [tabIndicatorStyle, setTabIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  const [tabIndicatorStyle, setTabIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: "overview", label: "Perfil", icon: "👤" },
-    { id: "edit", label: "Editar", icon: "✏️" },
-    { id: "security", label: "Seguridad", icon: "🔒" },
+    { id: "overview", label: "Identidad", icon: "∅" },
+    { id: "edit", label: "Modificar", icon: "⌁" },
+    { id: "security", label: "Rastros", icon: "⌧" },
   ];
 
   useEffect(() => {
@@ -54,6 +54,7 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
     setSaveStatus("idle");
+
     try {
       const updatedUser = await profileService.updateProfile(formData);
       setUser(updatedUser);
@@ -77,17 +78,12 @@ const Profile = () => {
   return (
     <Layout>
       <div className="profile-page">
-        {/* ── Banner ── */}
         <div className="profile-banner">
           <div className="profile-banner-gradient" />
-          <div className="profile-banner-shapes">
-            <span /><span /><span />
-          </div>
+          <div className="profile-banner-code">NO PROFILE / NO TRACE / 24H</div>
         </div>
 
-        {/* ── Card ── */}
         <div className="profile-card">
-          {/* Avatar */}
           <div className="profile-avatar-wrap">
             <div className="profile-avatar-ring">
               {(avatarPreview || user?.avatar_url) ? (
@@ -104,32 +100,31 @@ const Profile = () => {
             {isAdmin && <span className="profile-badge-admin">Admin</span>}
           </div>
 
-          {/* Name + meta */}
           <div className="profile-meta">
-            <h1 className="profile-name">{user?.display_name || user?.username || "Usuario"}</h1>
-            <span className="profile-username">@{user?.username}</span>
-            {user?.bio && <p className="profile-bio-text">{user.bio}</p>}
+            <h1 className="profile-name">{user?.display_name || user?.username || "Anónimo"}</h1>
+            <span className="profile-username">@{user?.username || "origen_desconocido"}</span>
+            <p className="profile-bio-text">
+              {user?.bio || "Esta identidad existe solo dentro del canal. Nada aquí está hecho para quedarse."}
+            </p>
           </div>
 
-          {/* Stats */}
           <div className="profile-stats">
             <div className="profile-stat">
-              <span className="profile-stat-value">—</span>
-              <span className="profile-stat-label">Posts</span>
+              <span className="profile-stat-value">24H</span>
+              <span className="profile-stat-label">Duración</span>
             </div>
             <div className="profile-stat-divider" />
             <div className="profile-stat">
-              <span className="profile-stat-value">—</span>
+              <span className="profile-stat-value">0</span>
               <span className="profile-stat-label">Seguidores</span>
             </div>
             <div className="profile-stat-divider" />
             <div className="profile-stat">
-              <span className="profile-stat-value">—</span>
-              <span className="profile-stat-label">Siguiendo</span>
+              <span className="profile-stat-value">∅</span>
+              <span className="profile-stat-label">Huella</span>
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="profile-tabs">
             {tabs.map((tab, i) => (
               <button
@@ -149,56 +144,54 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* ── Tab Panels ── */}
         <div className="profile-panels">
-
-          {/* Overview */}
           {activeTab === "overview" && (
             <div className="profile-panel fade-in">
               <div className="info-grid">
                 <div className="info-card">
-                  <div className="info-card-icon">📧</div>
+                  <div className="info-card-icon">✉</div>
                   <div>
-                    <p className="info-card-label">Email</p>
+                    <p className="info-card-label">Acceso</p>
                     <p className="info-card-value">{user?.email || "—"}</p>
                   </div>
                 </div>
+
                 <div className="info-card">
-                  <div className="info-card-icon">🪪</div>
+                  <div className="info-card-icon">∅</div>
                   <div>
-                    <p className="info-card-label">Nombre de usuario</p>
+                    <p className="info-card-label">Alias interno</p>
                     <p className="info-card-value">@{user?.username || "—"}</p>
                   </div>
                 </div>
+
                 <div className="info-card">
-                  <div className="info-card-icon">🛡️</div>
+                  <div className="info-card-icon">⌧</div>
                   <div>
-                    <p className="info-card-label">Rol</p>
-                    <p className="info-card-value">{isAdmin ? "Administrador" : "Usuario"}</p>
+                    <p className="info-card-label">Estado</p>
+                    <p className="info-card-value">{isAdmin ? "Acceso administrativo" : "Identidad temporal"}</p>
                   </div>
                 </div>
+
                 <div className="info-card">
-                  <div className="info-card-icon">💬</div>
+                  <div className="info-card-icon">⌁</div>
                   <div>
-                    <p className="info-card-label">Bio</p>
-                    <p className="info-card-value">{user?.bio || "Sin bio todavía"}</p>
+                    <p className="info-card-label">Nota</p>
+                    <p className="info-card-value">{user?.bio || "Sin nota visible."}</p>
                   </div>
                 </div>
               </div>
 
               <div className="profile-cta-row">
                 <button className="cta-btn primary" onClick={() => setActiveTab("edit")}>
-                  ✏️ Editar perfil
+                  Modificar identidad
                 </button>
               </div>
             </div>
           )}
 
-          {/* Edit */}
           {activeTab === "edit" && (
             <div className="profile-panel fade-in">
               <form className="edit-form" onSubmit={handleSubmit}>
-
                 <div className="avatar-editor">
                   <div className="avatar-editor-preview">
                     {avatarPreview ? (
@@ -207,38 +200,37 @@ const Profile = () => {
                       <span>{initials}</span>
                     )}
                   </div>
+
                   <div className="avatar-editor-input">
-                    <label>URL de avatar</label>
+                    <label>Imagen temporal</label>
                     <input
                       type="url"
                       value={formData.avatar_url}
                       onChange={(e) => handleAvatarUrlChange(e.target.value)}
-                      placeholder="https://ejemplo.com/foto.jpg"
+                      placeholder="https://..."
                     />
-                    <p className="field-hint">Pega el enlace de tu imagen — verás una vista previa en tiempo real.</p>
-                  </div>
-                </div>
-
-                <div className="field-row">
-                  <div className="field-group">
-                    <label>Nombre a mostrar</label>
-                    <input
-                      type="text"
-                      value={formData.display_name}
-                      onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                      placeholder="Tu nombre"
-                      maxLength={50}
-                    />
-                    <span className="char-count">{formData.display_name.length}/50</span>
+                    <p className="field-hint">Usa una imagen que no te identifique directamente.</p>
                   </div>
                 </div>
 
                 <div className="field-group">
-                  <label>Biografía</label>
+                  <label>Nombre visible</label>
+                  <input
+                    type="text"
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    placeholder="Alias temporal"
+                    maxLength={50}
+                  />
+                  <span className="char-count">{formData.display_name.length}/50</span>
+                </div>
+
+                <div className="field-group">
+                  <label>Nota breve</label>
                   <textarea
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Cuéntanos sobre ti..."
+                    placeholder="Algo mínimo. Nada permanente."
                     rows={4}
                     maxLength={200}
                   />
@@ -246,58 +238,53 @@ const Profile = () => {
                 </div>
 
                 <div className="edit-form-footer">
-                  {saveStatus === "success" && (
-                    <span className="save-feedback success">✓ Cambios guardados</span>
-                  )}
-                  {saveStatus === "error" && (
-                    <span className="save-feedback error">✗ Error al guardar</span>
-                  )}
+                  {saveStatus === "success" && <span className="save-feedback success">Cambios guardados</span>}
+                  {saveStatus === "error" && <span className="save-feedback error">Error al guardar</span>}
                   <button type="submit" className="cta-btn primary" disabled={loading}>
-                    {loading ? <span className="spinner" /> : "Guardar cambios"}
+                    {loading ? <span className="spinner" /> : "Guardar"}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* Security */}
           {activeTab === "security" && (
             <div className="profile-panel fade-in">
               <div className="security-grid">
                 <div className="security-item">
                   <div className="security-item-icon ok">✓</div>
                   <div>
-                    <p className="security-item-title">Cuenta activa</p>
-                    <p className="security-item-desc">Tu cuenta está verificada y activa en la plataforma.</p>
+                    <p className="security-item-title">Sesión activa</p>
+                    <p className="security-item-desc">Tu acceso está activo en este dispositivo.</p>
                   </div>
                 </div>
+
                 <div className="security-item">
-                  <div className="security-item-icon">🔑</div>
+                  <div className="security-item-icon">⌧</div>
                   <div>
-                    <p className="security-item-title">Contraseña</p>
-                    <p className="security-item-desc">Última actualización desconocida.</p>
+                    <p className="security-item-title">Capturas</p>
+                    <p className="security-item-desc">La experiencia está diseñada para evitar guardar rastros.</p>
                   </div>
-                  <button className="cta-btn ghost small">Cambiar</button>
                 </div>
+
                 <div className="security-item">
-                  <div className="security-item-icon">📱</div>
+                  <div className="security-item-icon">24</div>
                   <div>
-                    <p className="security-item-title">Autenticación en dos pasos</p>
-                    <p className="security-item-desc">Añade una capa extra de seguridad a tu cuenta.</p>
+                    <p className="security-item-title">Caducidad</p>
+                    <p className="security-item-desc">Las publicaciones están pensadas para desaparecer en 24 horas.</p>
                   </div>
-                  <button className="cta-btn ghost small">Activar</button>
                 </div>
+
                 <div className="security-item">
-                  <div className="security-item-icon">🌐</div>
+                  <div className="security-item-icon">∅</div>
                   <div>
-                    <p className="security-item-title">Sesiones activas</p>
-                    <p className="security-item-desc">Solo esta sesión está activa actualmente.</p>
+                    <p className="security-item-title">Sin perfil público</p>
+                    <p className="security-item-desc">EXPOSE no está hecho para acumular seguidores ni construir una marca personal.</p>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </Layout>
