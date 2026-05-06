@@ -1,5 +1,5 @@
 import express from 'express';
-import authRoutes from './modules/auth/auth.routes';
+import authRoutes from './routes/auth.routes';
 import path from 'path';
 import uploadRoutes from './routes/upload.routes';
 import { UPLOAD_DIR } from './config/env';
