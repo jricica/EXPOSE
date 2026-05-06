@@ -20,7 +20,7 @@ const PrivateRoute: React.FC<Props> = ({ children, requireAdmin = false }) => {
 
   if (!isAuthenticated) {
     redirectToLogin();
-    return null;
+   return null;
   }
 
   if (requireAdmin && !isAdmin) {

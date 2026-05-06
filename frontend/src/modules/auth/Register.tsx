@@ -77,14 +77,14 @@ const Register = () => {
     <div className="login-container">
       <div className="login-card">
         <h1 className="login-title">EXPOSE</h1>
-        <p className="login-subtitle">Crea tu cuenta y entra al panel.</p>
+        <p className="login-subtitle">Crea una identidad mínima. Úsala sin dejar rastro.</p>
 
         <div className="login-divider" />
 
         <form className="login-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Username"
+            placeholder="Alias temporal"
             className="login-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -93,7 +93,7 @@ const Register = () => {
 
           <input
             type="email"
-            placeholder="Email address"
+            placeholder="Email de acceso"
             className="login-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -103,7 +103,7 @@ const Register = () => {
           <div className="pwd-field-wrap">
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Clave de acceso"
               className="login-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -124,7 +124,7 @@ const Register = () => {
 
           <input
             type="password"
-            placeholder="Confirmar contraseña"
+            placeholder="Confirmar clave"
             className="login-input"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -134,19 +134,19 @@ const Register = () => {
           {error && <p className="login-error">{error}</p>}
 
           <button className="login-button" type="submit" disabled={loading}>
-            {loading ? "Creando cuenta..." : "Registrarme"}
+          {loading ? "Creando identidad..." : "Crear identidad"}
           </button>
         </form>
 
         <div className="login-footer">
           <Link className="login-link" to="/login">
-            Ya tienes cuenta? Inicia sesion
+          Ya tienes acceso? Entrar al canal
           </Link>
         </div>
 
         <div className="login-info">
-          <p>Tu experiencia se adapta al rol.</p>
-          <p>Acceso directo a user o admin dashboard.</p>
+        <p>Tu identidad no busca seguidores.</p>
+        <p>Solo existe para publicar antes de desaparecer.</p>
         </div>
       </div>
     </div>

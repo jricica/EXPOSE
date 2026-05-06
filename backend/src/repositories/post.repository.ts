@@ -39,6 +39,7 @@ export interface RepostCreateInput {
   content: string;
   expiresAt: Date;
   rootPostId: PostId;
+  is_sensitive?: boolean; 
 }
 
 const generatePostId = (): PostId => Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
@@ -504,6 +505,41 @@ export class PostRepository {
     );
   }
 
+  async purgeExpired(): Promise<number> {
+    const nowIso = new Date().toISOString();
+    let count = 0;
+    let lastEvaluatedKey: Record<string, any> | undefined;
+
+    do {
+      const result = await ddbDocClient.send(
+        new ScanCommand({
+          TableName: TABLES.FEED,
+          FilterExpression: 'expiresAt <= :now AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
+          ExpressionAttributeValues: { ':now': nowIso, ':true': true },
+          ProjectionExpression: 'postId',
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      const items = result.Items ?? [];
+      lastEvaluatedKey = result.LastEvaluatedKey as Record<string, any> | undefined;
+
+      for (const item of items) {
+        await ddbDocClient.send(
+          new UpdateCommand({
+            TableName: TABLES.FEED,
+            Key: { postId: item.postId },
+            UpdateExpression: 'SET is_deleted = :true',
+            ExpressionAttributeValues: { ':true': true },
+          })
+        );
+        count++;
+      }
+    } while (lastEvaluatedKey);
+
+    return count;
+  }
+
   async toggleLike(postId: PostId, userId: UserId): Promise<PostLikeState> {
     const currentlyLiked = await this.userLiked(postId, userId);
     return this.setLike(postId, userId, !currentlyLiked);
@@ -609,10 +645,15 @@ export class PostRepository {
     };
   }
 
-  async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
+  async addComment(
+    postId: PostId,
+    userId: UserId,
+    content: string,
+    isSensitive?: boolean 
+  ): Promise<Comment> {
     const commentId = `${Date.now()}#${randomUUID()}`;
     const now = new Date();
-
+  
     await ddbDocClient.send(
       new TransactWriteCommand({
         TransactItems: [
@@ -628,6 +669,7 @@ export class PostRepository {
                 updatedAt: now.toISOString(),
                 moderationStatus: 'active',
                 reportsCount: 0,
+                is_sensitive: isSensitive ?? false,
               },
               ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(commentId)',
             },
@@ -648,7 +690,7 @@ export class PostRepository {
         ],
       })
     );
-
+  
     return {
       commentId,
       postId,
@@ -658,6 +700,7 @@ export class PostRepository {
       updatedAt: now,
       moderationStatus: 'active',
       reportsCount: 0,
+      is_sensitive: isSensitive ?? false, 
     };
   }
 
@@ -837,7 +880,7 @@ export class PostRepository {
   async createRepost(input: RepostCreateInput): Promise<{ repostPostId: PostId; created: boolean }> {
     const repostPostId = generatePostId();
     const createdAt = new Date();
-
+  
     try {
       await ddbDocClient.send(
         new TransactWriteCommand({
@@ -885,6 +928,7 @@ export class PostRepository {
                   repostOfPostId: input.originalPostId,
                   originalAuthorId: input.originalAuthorId,
                   rootPostId: input.rootPostId,
+                  is_sensitive: input.is_sensitive ?? false, 
                 },
                 ConditionExpression: 'attribute_not_exists(postId)',
               },
@@ -892,14 +936,14 @@ export class PostRepository {
           ],
         })
       );
-
+  
       return { repostPostId, created: true };
     } catch (error) {
       if (!isConditionalTransactionFailure(error)) {
         throw error;
       }
     }
-
+  
     const existingShare = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.POST_SHARES,
@@ -907,18 +951,18 @@ export class PostRepository {
         ConsistentRead: true,
       })
     );
-
+  
     const existingRepostPostId = existingShare.Item?.repostPostId;
     if (!existingRepostPostId) {
       throw new Error('No se pudo resolver el repost existente para este usuario');
     }
-
+  
     return {
       repostPostId: Number(existingRepostPostId),
       created: false,
     };
   }
-
+  
   async share(postId: PostId, userId: UserId): Promise<number> {
     try {
       await ddbDocClient.send(
@@ -956,11 +1000,11 @@ export class PostRepository {
         throw error;
       }
     }
-
+  
     const post = await this.findById(postId);
     return post?.shareCount ?? 0;
   }
-
+  
   async incrementReports(postId: PostId): Promise<number | null> {
     const result = await ddbDocClient.send(
       new UpdateCommand({
@@ -975,13 +1019,13 @@ export class PostRepository {
         ReturnValues: 'UPDATED_NEW',
       })
     ).catch(() => null);
-
+  
     if (!result) {
       return null;
     }
-
+  
     return Number(result.Attributes?.reportsCount ?? 0);
   }
-}
-
-export const postRepository = new PostRepository();
+  }
+  
+  export const postRepository = new PostRepository();

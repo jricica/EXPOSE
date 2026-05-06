@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { postService } from "../services/post.service";
 import { getUserId, tryGetUserId } from "../utils/auth";
 import * as Sentry from "@sentry/node";
+import { sseManager } from "../lib/sse";
 
 export const createPost = async (req: Request, res: Response) => {
 	try {
@@ -19,6 +20,7 @@ export const createPost = async (req: Request, res: Response) => {
 			mediaUrl,
 		});
 
+		sseManager.broadcast('new_post', { postId: post.id, userId: post.userId });
 		res.status(201).json(post);
 	} catch (err) {
 		Sentry.captureException(err);
@@ -285,4 +287,16 @@ export const reportPost = async (req: Request, res: Response) => {
 		Sentry.captureException(err);
 		res.status(400).json({ message: 'Error reporting post' });
 	}
+};
+
+export const subscribeToFeed = (req: Request, res: Response) => {
+	res.setHeader('Content-Type', 'text/event-stream');
+	res.setHeader('Cache-Control', 'no-cache');
+	res.setHeader('Connection', 'keep-alive');
+	res.flushHeaders();
+
+	const client = sseManager.add(res);
+	res.write('event: connected\ndata: {}\n\n');
+
+	req.on('close', () => sseManager.remove(client));
 };

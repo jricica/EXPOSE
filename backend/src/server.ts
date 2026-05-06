@@ -11,6 +11,7 @@ import uploadRoutes from './routes/upload.routes';
 import relationshipRoutes from './routes/relationship.routes';
 import messageRoutes from './routes/message.routes';
 import healthRoutes from './routes/health.routes';
+import userRoutes from './routes/user.routes';
 
 // Import middlewares
 import { requestLogger } from './config/logger';
@@ -98,6 +99,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/relationships', relationshipRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api', userRoutes);
 app.use('/api', healthRoutes);
 
 // Health check (legacy endpoint for backward compatibility)
