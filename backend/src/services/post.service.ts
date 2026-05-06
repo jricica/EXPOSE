@@ -381,6 +381,12 @@ export class PostService {
 		return { reportsCount: reports, hidden };
 	}
 
+
+	async purgeExpiredPosts(): Promise<{ deleted: number }> {
+		const deleted = await this.repository.purgeExpired();
+		return { deleted };
+	}
+
 	private resolveExpiration(baseDate: Date, ttl?: DurationInput): Date {
 		const duration = ttl && durationIsPositive(ttl)
 			? ttl

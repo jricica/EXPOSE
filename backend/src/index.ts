@@ -3,6 +3,8 @@ dotenv.config();
 
 import { loadSecrets } from './config/secrets';
 
+const EXPIRED_POSTS_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
+
 async function bootstrap() {
   // 1. Cargar secretos de base de datos desde AWS antes de inicializar la BD
   await loadSecrets();
@@ -30,6 +32,19 @@ async function bootstrap() {
 
   // Initialize graceful shutdown with the server instance
   gracefulShutdown.setServer(server);
+
+  // Cleanup de posts expirados cada hora
+  const { postService } = await import('./services/post.service');
+  setInterval(async () => {
+    try {
+      const { deleted } = await postService.purgeExpiredPosts();
+      if (deleted > 0) {
+        logger.info('Expired posts cleanup completed', { deleted });
+      }
+    } catch (error) {
+      logger.error('Expired posts cleanup failed', { error });
+    }
+  }, EXPIRED_POSTS_CLEANUP_INTERVAL_MS);
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason, promise) => {

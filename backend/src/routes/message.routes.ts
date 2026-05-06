@@ -9,14 +9,15 @@ import {
 	sendMessage,
 } from '../controllers/message.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
+import { validateConversationOwnership } from '../middlewares/validateConversationOwnership.middleware';
 
 const router = Router();
 
 router.post('/conversations/direct', authMiddleware, createDirectConversation);
 router.get('/conversations', authMiddleware, listConversations);
-router.get('/conversations/:conversationId/messages', authMiddleware, listConversationMessages);
-router.post('/conversations/:conversationId/messages', authMiddleware, sendConversationMessage);
-router.post('/conversations/:conversationId/read', authMiddleware, markConversationRead);
+router.get('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, listConversationMessages);
+router.post('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, sendConversationMessage);
+router.post('/conversations/:conversationId/read', authMiddleware, validateConversationOwnership, markConversationRead);
 
 router.post('/messages', authMiddleware, sendMessage);
 router.get('/messages', authMiddleware, listMessages);

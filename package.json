@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "mysql2": "^3.17.0"
+    "mysql2": "^3.17.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }
