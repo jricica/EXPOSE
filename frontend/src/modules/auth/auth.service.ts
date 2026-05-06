@@ -1,12 +1,16 @@
 import { get, post } from "../../../services/api";
 import { AuthMeResponse, AuthResponse } from "./auth.types";
 
+export const resolveAuthToken = (response: AuthResponse): string => {
+  return response.authentication_token ?? response.token?.accessToken ?? '';
+};
+
 export const authService = {
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
       const res = await post<AuthResponse>("/auth/login", { email, password });
 
-      if (!res?.token) {
+      if (!resolveAuthToken(res)) {
         throw new Error("Credenciales inválidas");
       }
 
@@ -18,9 +22,9 @@ export const authService = {
 
   async register(username: string, email: string, password: string): Promise<AuthResponse> {
     try {
-      const user = await post<any>("/auth/register", { username, email, password });
+      const user = await post<AuthResponse>("/auth/register", { username, email, password });
 
-      if (!user.token) {
+      if (!resolveAuthToken(user)) {
         return await this.login(email, password);
       }
 

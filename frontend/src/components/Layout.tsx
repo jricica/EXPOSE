@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../modules/auth/AuthContext";
+import { Home, Compass, User as UserIcon, Shield, LogOut } from "lucide-react";
 import "./Layout.css";
 
 interface LayoutProps {
@@ -7,38 +9,61 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const location = useLocation();
 
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, "", path);
-    window.dispatchEvent(new Event("popstate"));
-  };
+  const mainPath = isAdmin ? "/admin/dashboard" : "/user/dashboard";
 
   return (
     <div className="layout-container">
-      <header className="layout-header">
-        <h1 className="layout-logo" onClick={() => navigateTo("/")} style={{ cursor: "pointer" }}>
-          EXPOSE
-        </h1>
-        {isAuthenticated ? (
-          <button className="layout-logout" onClick={() => logout()}>
-            Logout
-          </button>
-        ) : (
-          <button className="layout-logout" onClick={() => navigateTo("/login")}>
-            Login
-          </button>
-        )}
-      </header>
+      <div className="floating-nav-wrapper">
+        <nav className="floating-nav">
+          <div className="nav-brand" onClick={() => navigate(mainPath)}>
+            EXPOSE
+          </div>
+          
+          <div className="nav-divider"></div>
 
-      <nav className="layout-nav">
-        <span onClick={() => navigateTo("/")}>Home</span>
-        <span onClick={() => navigateTo("/profile")}>Profile</span>
-        <span>Explore</span>
-      </nav>
+          <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? 'active' : ''}`}>
+            <Home size={18} /> <span className="nav-text">Inicio</span>
+          </NavLink>
+          
+          <NavLink to="/feed" className={`nav-link ${location.pathname === '/feed' ? 'active' : ''}`}>
+            <Compass size={18} /> <span className="nav-text">Feed</span>
+          </NavLink>
+          
+          <NavLink to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
+            <UserIcon size={18} /> <span className="nav-text">Perfil</span>
+          </NavLink>
+          
+          {isAdmin && (
+            <NavLink to="/admin/dashboard" className={`nav-link ${location.pathname === '/admin/dashboard' ? 'active' : ''}`}>
+              <Shield size={18} /> <span className="nav-text">Admin</span>
+            </NavLink>
+          )}
 
-      <main className="layout-content">
-        <div className="layout-inner">{children}</div>
+          {isAuthenticated ? (
+            <>
+              <div className="nav-divider"></div>
+              <div className="nav-user">
+                <span className="nav-username">{user?.display_name || user?.username || "Usuario"}</span>
+                <button className="nav-logout" onClick={() => logout()} title="Cerrar sesión">
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="nav-divider"></div>
+              <NavLink to="/login" className="nav-link active">Login</NavLink>
+            </>
+          )}
+        </nav>
+      </div>
+
+      <main className="layout-main">
+        {children}
       </main>
     </div>
   );

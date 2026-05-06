@@ -69,10 +69,10 @@ async function initDb() {
       console.log(
         `ℹ️ Legacy schema detectado sin historial Prisma. Marcando baseline (${INIT_MIGRATION_ID})...`,
       );
-      runScript('prisma:migrate:baseline');
+      runScript('db:migrate:baseline');
     }
 
-    runScript('prisma:migrate:deploy');
+    runScript('db:migrate:deploy');
 
     console.log(`✅ Base de datos "${dbName}" alineada mediante Prisma Migrate.`);
     process.exit(0);

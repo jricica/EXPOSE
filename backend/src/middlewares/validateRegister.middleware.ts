@@ -1,25 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 
-const MIN_PASSWORD_LENGTH = 10;
+const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 72; // bcrypt only uses the first 72 bytes
-const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
-const WEAK_PASSWORDS = new Set([
-  "password1!",
-  "Password1!",
-  "Admin123!",
-  "Welcome1!",
-  "Qwerty123!",
-  "Letmein1!",
-  "Iloveyou1!",
-  "Abc12345!",
-  "Summer23!",
-  "Winter23!",
-  "Spring23!",
-  "Hello123!",
-  "Dragon1!",
-  "Master1!",
-  "Shadow1!",
-]);
 
 interface PasswordValidationContext {
   email?: unknown;
@@ -66,42 +48,7 @@ export function validatePassword(
     );
   }
 
-  if (!PASSWORD_COMPLEXITY_REGEX.test(password)) {
-    throw new Error(
-      "Password must include at least one uppercase letter, one lowercase letter, one number, and one symbol"
-    );
-  }
-
-  const normalizedPassword = normalizeComparable(password);
-  const alphanumericPassword = normalizedPassword.replace(/[^a-z0-9]/g, "");
-
-  if (
-    WEAK_PASSWORDS.has(normalizedPassword) ||
-    (alphanumericPassword.length > 0 && WEAK_PASSWORDS.has(alphanumericPassword))
-  ) {
-    throw new Error("Password is too common or weak");
-  }
-
-  if (typeof context.email === "string") {
-    const normalizedEmail = normalizeComparable(context.email);
-    const emailLocalPart = normalizedEmail.split("@")[0] ?? "";
-    if (
-      normalizedPassword === normalizedEmail ||
-      (emailLocalPart.length >= 4 && normalizedPassword.includes(emailLocalPart))
-    ) {
-      throw new Error("Password cannot be based on your email");
-    }
-  }
-
-  if (typeof context.username === "string") {
-    const normalizedUsername = normalizeComparable(context.username);
-    if (
-      normalizedPassword === normalizedUsername ||
-      (normalizedUsername.length >= 4 && normalizedPassword.includes(normalizedUsername))
-    ) {
-      throw new Error("Password cannot be based on your username");
-    }
-  }
+  // We relaxed the regex and email/username inclusion checks to make it less excessive
 
   return password;
 }

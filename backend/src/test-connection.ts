@@ -1,9 +1,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import pool from './db/pool';
+import { loadSecrets } from './config/secrets';
 
-async function testConnection() {
+async function bootstrap() {
+    await loadSecrets();
+    
+    const { default: pool } = await import('./db/pool');
+
     try {
         console.log('Intentando conectar a la base de datos...');
 
@@ -29,4 +33,4 @@ async function testConnection() {
     }
 }
 
-testConnection();
+bootstrap();
