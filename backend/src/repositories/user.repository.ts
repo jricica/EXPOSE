@@ -234,6 +234,15 @@ export class UserRepository {
     });
   }
 
+  static async updatePassword(id: UserId, passwordHash: string): Promise<void> {
+    return runWithRepositoryErrorHandling('updatePassword', async () => {
+      await prisma.user.update({
+        where: { id },
+        data: { passwordHash },
+      });
+    });
+  }
+
   static async delete(id: UserId): Promise<void> {
     await runWithRepositoryErrorHandling('delete', async () => {
       await prisma.user.delete({
@@ -244,6 +253,10 @@ export class UserRepository {
 
   async findById(id: UserId): Promise<User | null> {
     return UserRepository.findById(id);
+  }
+
+  async updatePassword(id: UserId, passwordHash: string): Promise<void> {
+    return UserRepository.updatePassword(id, passwordHash);
   }
 
   async findByEmail(email: string): Promise<User | null> {
