@@ -1,0 +1,131 @@
+.feed-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.feed-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.feed-topbar h2 {
+  margin: 0;
+}
+
+.feed-filter {
+  background: #15253d;
+  border: 1px solid #284e76;
+  color: #b6d6f5;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  padding: 0.5rem 0.8rem;
+}
+
+.feed-create {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 0.85rem;
+}
+
+.feed-create textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 82px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-family: inherit;
+}
+
+.feed-create textarea:focus {
+  outline: none;
+}
+
+.feed-create-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.feed-create-footer button {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(130deg, #2f6ba7, #3f85c7);
+  color: #f3fbff;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+}
+
+.feed-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(150deg, #141922 0%, #0f141c 100%);
+  padding: 0.9rem;
+}
+
+.feed-content {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.feed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.feed-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.feed-actions button,
+.feed-comment-box button,
+.feed-load-more {
+  border: 1px solid #32587f;
+  border-radius: 10px;
+  background: #16293f;
+  color: #d8e9ff;
+  padding: 0.45rem 0.8rem;
+}
+
+.feed-comment-box {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.feed-comment-box input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #25364f;
+  border-radius: 10px;
+  background: #111925;
+  color: #eef5ff;
+  padding: 0.55rem 0.65rem;
+}
+
+.feed-load-more {
+  justify-self: center;
+}
+
+.feed-error {
+  margin: 0;
+  color: #ff7f7f;
+}
+
+.feed-empty {
+  margin: 0;
+  color: var(--text-muted);
+}

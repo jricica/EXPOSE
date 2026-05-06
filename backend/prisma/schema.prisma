@@ -22,17 +22,6 @@ model User {
   post_likes   PostLike[]
 
   @@map("users")
-  id            Int        @id @default(autoincrement())
-  username      String     @unique @db.VarChar(50)
-  email         String     @unique @db.VarChar(255)
-  passwordHash  String     @db.VarChar(255)
-  lastLogin     DateTime?  
-  createdAt     DateTime   @default(now())
-  bio           String?    @db.Text
-  display_name  String?    @db.VarChar(100)
-  avatar_url    String?    @db.Text
-  posts         Post[]
-  postLikes     PostLike[]
 }
 
 model Post {

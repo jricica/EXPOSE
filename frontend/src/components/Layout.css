@@ -1,103 +1,148 @@
 .layout-container {
-  width: 100%;
   min-height: 100vh;
-  color: var(--text-main);
   display: flex;
   flex-direction: column;
 }
 
-.layout-header {
-  padding: 0.8rem 1.2rem;
+.floating-nav-wrapper {
+  position: fixed;
+  top: 1.5rem;
+  left: 0;
+  width: 100%;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(6px);
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  padding: 0 1rem;
 }
 
-.layout-logo {
-  margin: 0;
-  font-size: 1.1rem;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-}
-
-.layout-user-actions {
+.floating-nav {
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-}
-
-.layout-user-pill {
-  border: 1px solid #365579;
+  gap: 0.5rem;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
   border-radius: 999px;
-  padding: 0.26rem 0.62rem;
-  font-size: 0.75rem;
-  color: #b6d7ff;
-  background: #14253b;
-}
-
-.layout-logout {
-  border: 1px solid #2f4c72;
-  border-radius: 8px;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.78rem;
-  color: #d5e7ff;
-  background: #16253a;
-}
-
-.layout-logout:hover {
-  border-color: #3f6a98;
-}
-
-.layout-nav {
-  display: flex;
-  gap: 0.65rem;
-  padding: 0.65rem 1.2rem;
-  font-size: 0.82rem;
-  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow-x: auto;
+  max-width: 100%;
 }
 
-.layout-nav a {
-  text-decoration: none;
-  color: var(--text-muted);
-  padding: 0.34rem 0.64rem;
+.floating-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.15em;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: opacity 0.2s;
+}
+
+.nav-brand:hover {
+  opacity: 0.8;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
   border-radius: 999px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
 
-.layout-nav a:hover,
-.layout-nav a.active {
-  color: #f0f8ff;
-  background: #1b314f;
+.nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.layout-content {
-  flex: 1;
-  padding: 1rem;
+.nav-link.active {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 0.25rem;
+  flex-shrink: 0;
+}
+
+.nav-user {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.25rem 0.25rem 1rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.nav-username {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-logout {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: flex-start;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.layout-inner {
-  width: 100%;
-  max-width: 980px;
-  margin: 0 auto;
+.nav-logout:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
-@media (min-width: 840px) {
-  .layout-header {
-    padding: 1rem 2rem;
-  }
+.layout-main {
+  padding-top: 7rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
-  .layout-nav {
-    padding: 0.8rem 2rem;
-    gap: 1rem;
+@media (max-width: 768px) {
+  .nav-text {
+    display: none;
   }
-
-  .layout-content {
-    padding: 1.4rem 2rem 2rem;
+  .nav-link {
+    padding: 0.6rem;
+    justify-content: center;
   }
 }

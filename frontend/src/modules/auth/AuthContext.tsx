@@ -17,6 +17,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isLoading: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: (redirect?: boolean) => void;
   setUser: (user: AuthUser | null) => void;
@@ -56,8 +57,22 @@ type AuthProviderProps = {
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [token, setTokenState] = useState<string | null>(null);
-  const [user, setUserState] = useState<AuthUser | null>(null);
+  const [token, setTokenState] = useState<string | null>(() => {
+    const t = localStorage.getItem(TOKEN_STORAGE_KEY) ?? localStorage.getItem('token');
+    return t === 'null' || t === 'undefined' ? null : t;
+  });
+  const [user, setUserState] = useState<AuthUser | null>(() => {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    if (storedUser && storedUser !== 'null' && storedUser !== 'undefined') {
+      try {
+        return JSON.parse(storedUser);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   const clearAuth = () => {
     setTokenState(null);
@@ -72,35 +87,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let active = true;
 
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY) ?? localStorage.getItem('token');
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-
     const bootstrapAuth = async () => {
-      if (!storedToken) {
+      if (!storedToken || storedToken === 'null' || storedToken === 'undefined') {
+        console.warn("AuthContext: No valid token found in localStorage, clearing auth.");
         clearAuth();
+        setIsLoading(false);
         return;
       }
 
       setTokenState(storedToken);
       setApiToken(storedToken);
 
-      if (storedUser) {
-        try {
-          setUserState(JSON.parse(storedUser));
-        } catch {
-          localStorage.removeItem(USER_STORAGE_KEY);
-        }
-      }
-
       try {
+        console.log("AuthContext: Fetching /auth/me...");
         const response = await authService.getMe();
+        console.log("AuthContext: /auth/me success!", response);
 
         if (!active) return;
 
         setUserState(response.user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
-      } catch {
+      } catch (err: any) {
+        console.error("AuthContext: /auth/me failed!", err);
         if (!active) return;
-        clearAuth();
+        
+        // Only clear auth if the server explicitly rejected the token (401 or 403)
+        // If it's a network error, 500, or 503, keep the session alive!
+        if (err?.status === 401 || err?.status === 403) {
+          console.warn("AuthContext: Token invalid, clearing auth.");
+          clearAuth();
+        } else {
+          console.warn("AuthContext: Network or server error, maintaining session.");
+        }
+      } finally {
+        if (active) setIsLoading(false);
       }
     };
 
@@ -153,6 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated: Boolean(token),
     isAdmin,
+    isLoading,
     login,
     logout,
     setUser,

@@ -6,6 +6,7 @@ import { AuthRequest } from "../types/auth-context";
 
 type AuthErrorCode =
   | "validation_error"
+  | "database_unavailable"
   | "invalid_credentials"
   | "email_conflict"
   | "username_conflict"
@@ -43,6 +44,13 @@ const getPrismaUniqueTargets = (err: unknown): string[] => {
 
 const registerErrorResponse = (err: unknown): { status: number; body: AuthErrorPayload } => {
   const message = getErrorMessage(err, "Error en el registro");
+
+  if (/database unavailable|can't reach database server|reach database server|timed out|econnrefused|etimedout/i.test(message)) {
+    return {
+      status: 503,
+      body: { error: 'database_unavailable', message: 'Base de datos no disponible. Intenta de nuevo en unos minutos.' },
+    };
+  }
 
   const uniqueTargets = getPrismaUniqueTargets(err);
   if (uniqueTargets.length > 0) {
@@ -113,6 +121,13 @@ const registerErrorResponse = (err: unknown): { status: number; body: AuthErrorP
 const loginErrorResponse = (err: unknown): { status: number; body: AuthErrorPayload } => {
   const message = getErrorMessage(err, "Error en el login");
 
+  if (/database unavailable|can't reach database server|reach database server|timed out|econnrefused|etimedout/i.test(message)) {
+    return {
+      status: 503,
+      body: { error: 'database_unavailable', message: 'Base de datos no disponible. Intenta de nuevo en unos minutos.' },
+    };
+  }
+
   if (/credenciales inválidas/i.test(message)) {
     return {
       status: 401,
@@ -138,10 +153,10 @@ export const register = async (req: Request, res: Response) => {
     const response = await authService.register(req.body);
     res.status(201).json(response);
   } catch (err) {
-    console.error("Register Error:", err);
+    console.error("REGISTER ERROR COMPLETELY:", err);
     Sentry.captureException(err);
-    const message = err instanceof Error ? err.message : "Error en el registro";
-    res.status(400).json({ message });
+    const mapped = registerErrorResponse(err);
+    res.status(mapped.status).json(mapped.body);
   }
 };
 

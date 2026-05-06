@@ -4,6 +4,14 @@ import "./Login.css";
 import { authService, resolveAuthToken } from "./auth.service";
 import { useAuth } from "./AuthContext";
 
+const pwdRules = [
+  { id: "len",    label: "Mínimo 10 caracteres",          test: (p: string) => p.length >= 10 },
+  { id: "upper",  label: "Una letra mayúscula (A–Z)",      test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lower",  label: "Una letra minúscula (a–z)",      test: (p: string) => /[a-z]/.test(p) },
+  { id: "digit",  label: "Un número (0–9)",               test: (p: string) => /\d/.test(p) },
+  { id: "symbol", label: "Un símbolo (!@#$%^&*…)",        test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
 const Register = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -14,6 +22,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pwdFocused, setPwdFocused] = useState(false);
 
   const redirectTo = useMemo(() => searchParams.get("from") || "", [searchParams]);
 
@@ -91,18 +100,31 @@ const Register = () => {
             disabled={loading}
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="login-input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-          />
+          <div className="pwd-field-wrap">
+            <input
+              type="password"
+              placeholder="Password"
+              className="login-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPwdFocused(true)}
+              disabled={loading}
+            />
+            {(pwdFocused || password.length > 0) && (
+              <ul className="pwd-rules">
+                {pwdRules.map((r) => (
+                  <li key={r.id} className={r.test(password) ? "rule-ok" : "rule-fail"}>
+                    <span className="rule-icon">{r.test(password) ? "✓" : "○"}</span>
+                    {r.label}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <input
             type="password"
-            placeholder="Confirm password"
+            placeholder="Confirmar contraseña"
             className="login-input"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

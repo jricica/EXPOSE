@@ -9,8 +9,18 @@ import UserDashboard from './modules/dashboard/UserDashboard';
 import AdminDashboard from './modules/dashboard/AdminDashboard';
 import NotFound from './NotFound';
 
+import { Loader2 } from 'lucide-react';
+
 const RootRedirect = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a' }}>
+        <Loader2 className="animate-spin text-blue-500" size={48} />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

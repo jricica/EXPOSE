@@ -53,6 +53,26 @@ const mapPublicUser = (user: {
 });
 
 const toRepositoryError = (error: unknown, operation: string): Error => {
+  const maybeCode = (error as { code?: unknown } | undefined)?.code;
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return new Error('Database unavailable. Please check DB host/port and that the database is running.');
+  }
+
+  if (
+    maybeCode === 'ETIMEDOUT' ||
+    maybeCode === 'ECONNREFUSED' ||
+    maybeCode === 'ENOTFOUND' ||
+    maybeCode === 'P1001' ||
+    maybeCode === 'P1002'
+  ) {
+    return new Error('Database unavailable. Please check DB host/port and that the database is running.');
+  }
+
+  if (error instanceof Error && /timed out|connect|connection|can\'t reach database server|reach database server|database server/i.test(error.message)) {
+    return new Error('Database unavailable. Please check DB host/port and that the database is running.');
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === 'P2002') {
       const rawTarget = (error.meta as { target?: string | string[] } | undefined)?.target;

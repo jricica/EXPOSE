@@ -83,10 +83,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Request logging
 app.use(requestLogger);
 
-// Serve static files from the frontend build (only in development)
 if (process.env.NODE_ENV !== 'production') {
   const frontendPath = path.join(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendPath));
+  app.use(express.static(frontendPath, { setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }}));
 }
 
 // API Routes
@@ -118,6 +121,9 @@ app.use((req: Request, res: Response, next) => {
   } else {
     // In development, serve the frontend
     const frontendPath = path.join(__dirname, '../../frontend/dist');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(frontendPath, 'index.html'));
   }
 });
