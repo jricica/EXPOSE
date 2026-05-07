@@ -19,7 +19,7 @@ router.get('/conversations/:conversationId/messages', authMiddleware, validateCo
 router.post('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, sendConversationMessage);
 router.post('/conversations/:conversationId/read', authMiddleware, validateConversationOwnership, markConversationRead);
 
-router.post('/messages', authMiddleware, sendMessage);
-router.get('/messages', authMiddleware, listMessages);
+router.post('/', authMiddleware, sendMessage);
+router.get('/', authMiddleware, listMessages);
 
 export default router;
