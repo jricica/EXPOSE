@@ -19,7 +19,11 @@ const buildConversationId = (a: UserId, b: UserId): ConversationId => {
 export class MessageService {
   constructor(private readonly repo: MessageRepository = messageRepository) {}
 
-  async getOrCreateDirectConversation(userA: UserId, userB: UserId): Promise<Conversation> {
+  async getOrCreateDirectConversation(
+    userA: UserId,
+    userB: UserId,
+    options?: { skipFollowValidation?: boolean },
+  ): Promise<Conversation> {
     if (!Number.isInteger(userA) || !Number.isInteger(userB) || userA <= 0 || userB <= 0) {
       throw new Error('Participantes inválidos');
     }
@@ -28,18 +32,20 @@ export class MessageService {
       throw new Error('No se puede crear conversación directa con el mismo usuario');
     }
 
-    const [aFollowsB, bFollowsA] = await Promise.all([
-      relationshipRepository.isFollowing(userA, userB),
-      relationshipRepository.isFollowing(userB, userA),
-    ]);
-    if (!aFollowsB || !bFollowsA) {
-      throw new Error('Solo puedes iniciar mensajes directos con usuarios que también te siguen');
-    }
-
     const conversationId = buildConversationId(userA, userB);
     const existing = await this.repo.getConversation(conversationId);
     if (existing) {
       return existing;
+    }
+
+    if (!options?.skipFollowValidation) {
+      const [aFollowsB, bFollowsA] = await Promise.all([
+        relationshipRepository.isFollowing(userA, userB),
+        relationshipRepository.isFollowing(userB, userA),
+      ]);
+      if (!aFollowsB || !bFollowsA) {
+        throw new Error('Solo puedes iniciar mensajes directos con usuarios que también te siguen');
+      }
     }
 
     const now = new Date();

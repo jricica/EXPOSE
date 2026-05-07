@@ -29,11 +29,13 @@ export const messageService = {
     },
 
     async getConversationMessages(conversationId: string) {
-        return await get<{ messages: Message[] }>(`/messages/conversations/${conversationId}/messages`);
+        const encodedConversationId = encodeURIComponent(conversationId);
+        return await get<{ messages: Message[] }>(`/messages/conversations/${encodedConversationId}/messages`);
     },
 
     async sendMessage(conversationId: string, content: string, mediaUrl?: string, postReference?: PostReference) {
-        return await post<Message>(`/messages/conversations/${conversationId}/messages`, { content, mediaUrl, postReference });
+        const encodedConversationId = encodeURIComponent(conversationId);
+        return await post<Message>(`/messages/conversations/${encodedConversationId}/messages`, { content, mediaUrl, postReference });
     },
 
     async createDirectConversation(participantUserId: number) {

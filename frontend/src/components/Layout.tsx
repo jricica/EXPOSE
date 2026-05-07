@@ -25,34 +25,26 @@ const Layout = ({ children }: LayoutProps) => {
 
           <span className="nav-status">24H CHANNEL</span>
 
-          <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? 'active' : ''}`}>
-            <Home size={18} /> <span className="nav-text">Inicio</span>
-          </NavLink>
-          
-          <NavLink to="/feed" className={`nav-link ${location.pathname === '/feed' ? 'active' : ''}`}>
-            <Compass size={18} /> <span className="nav-text">Feed</span>
-          </NavLink>
-          
-          <NavLink to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-            <UserIcon size={18} /> <span className="nav-text">Perfil</span>
-          </NavLink>
+          <div className="nav-links">
+            <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? 'active' : ''}`}>
+              <Home size={18} /> <span className="nav-text">Inicio</span>
+            </NavLink>
 
-          <NavLink to="/messages" className={`nav-link ${location.pathname === '/messages' ? 'active' : ''}`}>
-            <MessageCircle size={18} /> <span className="nav-text">Mensajes</span>
-          </NavLink>
-          
-          {isAdmin && (
-            <NavLink to="/admin/dashboard" className={`nav-link ${location.pathname === '/admin/dashboard' ? 'active' : ''}`}>
-              <Shield size={18} /> <span className="nav-text">Admin</span>
+            <NavLink to="/feed" className={`nav-link ${location.pathname === '/feed' ? 'active' : ''}`}>
+              <Compass size={18} /> <span className="nav-text">Feed</span>
+            </NavLink>
+
+            <NavLink to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
+              <UserIcon size={18} /> <span className="nav-text">Perfil</span>
+            </NavLink>
+
+            <NavLink to="/messages" className={`nav-link ${location.pathname === '/messages' ? 'active' : ''}`}>
+              <MessageCircle size={18} /> <span className="nav-text">Mensajes</span>
             </NavLink>
 
             {isAdmin && (
-              <NavLink
-                to="/admin/dashboard"
-                className={`nav-link ${location.pathname === "/admin/dashboard" ? "active" : ""}`}
-              >
-                <Shield size={16} />
-                <span className="nav-text">Admin</span>
+              <NavLink to="/admin/dashboard" className={`nav-link ${location.pathname === '/admin/dashboard' ? 'active' : ''}`}>
+                <Shield size={18} /> <span className="nav-text">Admin</span>
               </NavLink>
             )}
           </div>

@@ -18,6 +18,8 @@ const router = Router();
 router.post('/conversations', authMiddleware, createDirectConversation);
 router.post('/conversations/direct', authMiddleware, createDirectConversation);
 router.get('/conversations', authMiddleware, listConversations);
+router.get('/conversations/:conversationId', authMiddleware, validateConversationOwnership, listConversationMessages);
+router.post('/conversations/:conversationId', authMiddleware, validateConversationOwnership, sendConversationMessage);
 router.get('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, listConversationMessages);
 router.post('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, sendConversationMessage);
 router.patch('/conversations/:conversationId/messages/:messageId', authMiddleware, validateConversationOwnership, editConversationMessage);

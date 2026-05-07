@@ -49,9 +49,105 @@
   text-align: center;
 }
 
+.user-search-card {
+  background: rgba(10, 10, 10, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.user-search-form {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.user-search-form input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #eee;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+}
+
+.user-search-form button {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  border-radius: 4px;
+  padding: 0.55rem 0.85rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.user-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.user-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.6rem 0.7rem;
+}
+
+.user-result-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-result-name {
+  color: #f0f0f0;
+  font-size: 0.86rem;
+}
+
+.user-result-username {
+  color: #8f8f8f;
+  font-size: 0.72rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.user-result-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.result-follow-btn,
+.result-message-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ececec;
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.result-follow-btn.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0b0b0b;
+  border-color: #fff;
+}
+
 .feed-controls {
   display: flex;
   gap: 0.8rem;
+}
+
+.feed-scope-toggle {
+  display: flex;
+  gap: 0.45rem;
 }
 
 .btn-refresh, .btn-filter {
@@ -379,7 +475,6 @@
   color: var(--text-muted);
 }
 
-.feed-meta {
 .post-media {
   margin-top: 0.9rem;
   width: 100%;
@@ -421,6 +516,20 @@
 
 .action-btn.active {
   color: #fff;
+}
+
+.follow-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.follow-btn.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #090909;
+  border-color: #fff;
 }
 
 .btn-message-sender {
@@ -532,6 +641,8 @@
 .feed-error {
   margin: 0;
   color: #ff7f7f;
+}
+
 .btn-load-more {
   margin: 2rem auto;
   background: rgba(255, 255, 255, 0.03);

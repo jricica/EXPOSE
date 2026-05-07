@@ -7,19 +7,39 @@ export class RelationshipRepository {
     const createdAt = new Date();
 
     const keys = relationshipKey(userId, targetUserId, relationshipType.toUpperCase() as any);
-    await ddbDocClient.send(
-      new PutCommand({
-        TableName: TABLES.RELATIONSHIPS,
-        Item: {
-          ...keys,
-          userId,
-          targetUserId,
-          relationshipType,
-          createdAt: createdAt.toISOString(),
-        },
-        ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
-      })
-    );
+    try {
+      await ddbDocClient.send(
+        new PutCommand({
+          TableName: TABLES.RELATIONSHIPS,
+          Item: {
+            ...keys,
+            userId,
+            targetUserId,
+            relationshipType,
+            createdAt: createdAt.toISOString(),
+          },
+          ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+        })
+      );
+    } catch (error) {
+      const existing = await ddbDocClient.send(
+        new GetCommand({
+          TableName: TABLES.RELATIONSHIPS,
+          Key: { pk: keys.pk, sk: keys.sk },
+        })
+      );
+
+      if (existing.Item) {
+        return {
+          userId: Number(existing.Item.userId),
+          targetUserId: Number(existing.Item.targetUserId),
+          relationshipType: String(existing.Item.relationshipType) as RelationshipType,
+          createdAt: new Date(existing.Item.createdAt),
+        };
+      }
+
+      throw error;
+    }
 
     return { userId, targetUserId, relationshipType, createdAt };
   }
@@ -55,7 +75,7 @@ export class RelationshipRepository {
           KeyConditionExpression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
           ExpressionAttributeValues: { 
             ':pk': `${DYNAMO_PREFIXES.user}#${userId}`,
-            ':sk_prefix': `${DYNAMO_PREFIXES.relationship}#`
+            ':sk_prefix': `${DYNAMO_PREFIXES.relationship}#FOLLOW#`
           },
           ExclusiveStartKey: lastKey,
         })
@@ -84,7 +104,11 @@ export class RelationshipRepository {
             TableName: TABLES.RELATIONSHIPS,
             IndexName: indexName,
             KeyConditionExpression: 'gsi1pk = :tid',
-            ExpressionAttributeValues: { ':tid': `${DYNAMO_PREFIXES.user}#${targetUserId}` },
+            FilterExpression: 'relationshipType = :relationshipType',
+            ExpressionAttributeValues: {
+              ':tid': `${DYNAMO_PREFIXES.user}#${targetUserId}`,
+              ':relationshipType': 'follow',
+            },
             ExclusiveStartKey: lastKey,
           })
         );
@@ -98,8 +122,12 @@ export class RelationshipRepository {
         const res = await ddbDocClient.send(
           new ScanCommand({
             TableName: TABLES.RELATIONSHIPS,
-            FilterExpression: 'targetUserId = :tid OR gsi1pk = :tid',
-            ExpressionAttributeValues: { ':tid': `${DYNAMO_PREFIXES.user}#${targetUserId}` },
+            FilterExpression: '(targetUserId = :targetUserId OR gsi1pk = :targetUserKey) AND relationshipType = :relationshipType',
+            ExpressionAttributeValues: {
+              ':targetUserId': targetUserId,
+              ':targetUserKey': `${DYNAMO_PREFIXES.user}#${targetUserId}`,
+              ':relationshipType': 'follow',
+            },
             ExclusiveStartKey: scanKey,
           })
         );

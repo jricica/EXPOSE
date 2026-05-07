@@ -1,5 +1,4 @@
-import { del, get, postForm, put } from '../../../services/api';
-import { post } from '../../../services/api';
+import { del, get, post, postForm, put } from '../../../services/api';
 import { FeedResponse, LikeState, PostComment, PostCommentsResponse, PostItem } from './post.types';
 
 export type FeedCursor = {
@@ -7,15 +6,13 @@ export type FeedCursor = {
   cursorPostId: number;
 };
 
-export type PaginatedComments = {
-  comments: PostComment[];
-  pagination: { limit: number; nextCursorCommentId: string | null };
-};
+export type FeedScope = 'general' | 'following';
 
 export const postService = {
-  async listFeed(limit = 20, cursor?: FeedCursor): Promise<FeedResponse> {
+  async listFeed(limit = 20, cursor?: FeedCursor, scope: FeedScope = 'general'): Promise<FeedResponse> {
     return get<FeedResponse>('/posts', {
       limit,
+      scope,
       cursorCreatedAt: cursor?.cursorCreatedAt,
       cursorPostId: cursor?.cursorPostId,
     });
@@ -25,26 +22,6 @@ export const postService = {
     return get<PostItem>(`/posts/${postId}`);
   },
 
-  async createPost(content: string): Promise<PostItem> {
-    return post<PostItem>('/posts', { content });
-  },
-
-  async deletePost(postId: number): Promise<void> {
-    return del<void>(`/posts/${postId}`);
-  },
-
-  async toggleLike(postId: number): Promise<LikeState> {
-    return post<LikeState>(`/posts/${postId}/like`, {});
-  },
-
-  async setLike(postId: number, liked: boolean): Promise<LikeState> {
-    return put<LikeState>(`/posts/${postId}/like`, { liked });
-  },
-
-  async listComments(postId: number, cursor?: string, limit = 20): Promise<PaginatedComments> {
-    return get<PaginatedComments>(`/posts/${postId}/comments`, {
-      limit,
-      cursorCommentId: cursor,
   async createPost(content: string, options?: { ttlMinutes?: number; mediaUrl?: string }): Promise<PostItem> {
     const ttlMinutes = Math.min(Math.max(options?.ttlMinutes ?? 24 * 60, 1), 24 * 60);
 
@@ -55,16 +32,35 @@ export const postService = {
     });
   },
 
+  async deletePost(postId: number): Promise<void> {
+    await del<void>(`/posts/${postId}`);
+  },
+
+  async toggleLike(postId: number): Promise<LikeState> {
+    return post<LikeState>(`/posts/${postId}/like`, {});
+  },
+
+  async setLike(postId: number, liked: boolean): Promise<LikeState> {
+    return put<LikeState>(`/posts/${postId}/like`, { liked });
+  },
+
   async addComment(postId: number, content: string): Promise<PostComment> {
     return post<PostComment>(`/posts/${postId}/comments`, { content });
   },
 
+  async listComments(postId: number, cursor?: string, limit = 50): Promise<PostCommentsResponse> {
+    return get<PostCommentsResponse>(`/posts/${postId}/comments`, {
+      limit,
+      cursorCommentId: cursor,
+    });
+  },
+
   async deleteComment(postId: number, commentId: string): Promise<void> {
-    return del<void>(`/posts/${postId}/comments/${commentId}`);
+    await del<void>(`/posts/${postId}/comments/${commentId}`);
   },
 
   async reportComment(postId: number, commentId: string): Promise<void> {
-    return post<void>(`/posts/${postId}/comments/${commentId}/report`, {});
+    await post<void>(`/posts/${postId}/comments/${commentId}/report`, {});
   },
 
   async repostPost(postId: number, content?: string): Promise<PostItem> {
@@ -76,13 +72,7 @@ export const postService = {
   },
 
   async reportPost(postId: number): Promise<void> {
-    return post<void>(`/posts/${postId}/report`, {});
-  async listComments(postId: number): Promise<PostCommentsResponse> {
-    return get<PostCommentsResponse>(`/posts/${postId}/comments`, { limit: 50 });
-  },
-
-  async deletePost(postId: number): Promise<void> {
-    await del<void>(`/posts/${postId}`);
+    await post<void>(`/posts/${postId}/report`, {});
   },
 
   async uploadPostImage(file: File): Promise<{ url: string }> {

@@ -3,6 +3,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { messageService, type Conversation, type Message } from './message.service';
 import { profileService } from '../profile/profile.service';
+import { userService, type PublicUser } from '../users/user.service';
 import { motion } from 'framer-motion';
 import { Send, Paperclip, Search, MoreVertical, Trash2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -26,9 +27,11 @@ const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [participantMeta, setParticipantMeta] = useState<Record<number, PublicUser>>({});
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +55,55 @@ const Messages = () => {
       loadMessages(selectedConvId);
     }
   }, [selectedConvId]);
+
+  useEffect(() => {
+    if (!selectedConvId && conversations.length > 0) {
+      setSelectedConvId(conversations[0].conversationId);
+    }
+  }, [conversations, selectedConvId]);
+
+  useEffect(() => {
+    const loadParticipantMeta = async () => {
+      if (!user?.id || conversations.length === 0) return;
+
+      const counterpartIds = Array.from(
+        new Set(
+          conversations
+            .map((conv) => conv.participantIds.find((id) => id !== user.id))
+            .filter((id): id is number => typeof id === 'number' && id > 0),
+        ),
+      );
+
+      if (counterpartIds.length === 0) return;
+
+      const unresolved = counterpartIds.filter((id) => !participantMeta[id]);
+      if (unresolved.length === 0) return;
+
+      const resolved = await Promise.all(
+        unresolved.map(async (id) => {
+          try {
+            const profile = await userService.getUserById(id);
+            return [id, profile] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      const updates = resolved.filter((entry): entry is readonly [number, PublicUser] => entry !== null);
+      if (updates.length === 0) return;
+
+      setParticipantMeta((prev) => {
+        const next = { ...prev };
+        for (const [id, profile] of updates) {
+          next[id] = profile;
+        }
+        return next;
+      });
+    };
+
+    void loadParticipantMeta();
+  }, [conversations, participantMeta, user?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -124,6 +176,19 @@ const Messages = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const getConversationLabel = (conversationId: string) => {
+    const [left, right] = conversationId.split('#').map((item) => Number(item));
+    const targetId = left === user?.id ? right : left;
+    const targetProfile = participantMeta[targetId];
+    if (targetProfile?.display_name?.trim()) return targetProfile.display_name.trim();
+    if (targetProfile?.username?.trim()) return targetProfile.username.trim();
+    return `Usuario #${String(targetId).slice(-4)}`;
+  };
+
+  const filteredConversations = conversations.filter((conv) =>
+    getConversationLabel(conv.conversationId).toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
   // const activeConversation = conversations.find(c => c.conversationId === selectedConvId);
 
   return (
@@ -134,17 +199,22 @@ const Messages = () => {
             <h2>Mensajes</h2>
             <div className="search-bar">
               <Search size={14} />
-              <input type="text" placeholder="Buscar rastros..." />
+              <input
+                type="text"
+                placeholder="Buscar conversación..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
           
           <div className="convos-list">
             {loading ? (
               <div className="convos-loading">Buscando señales...</div>
-            ) : conversations.length === 0 ? (
+            ) : filteredConversations.length === 0 ? (
               <div className="convos-empty">No hay conversaciones activas.</div>
             ) : (
-              conversations.map((conv) => (
+              filteredConversations.map((conv) => (
                 <motion.div
                   key={conv.conversationId}
                   className={`convo-item ${selectedConvId === conv.conversationId ? 'active' : ''}`}
@@ -154,7 +224,7 @@ const Messages = () => {
                   <div className="convo-avatar">∅</div>
                   <div className="convo-info">
                     <div className="convo-top">
-                      <span className="convo-name">Anon #{conv.conversationId.split('#')[0].slice(-4)}</span>
+                      <span className="convo-name">{getConversationLabel(conv.conversationId)}</span>
                       <span className="convo-time">
                         {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>

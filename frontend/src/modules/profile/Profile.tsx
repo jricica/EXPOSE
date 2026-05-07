@@ -3,6 +3,8 @@ import Layout from "../../components/Layout";
 import { useAuth } from "../auth/AuthContext";
 import "./Profile.css";
 import { profileService } from "./profile.service";
+import { relationshipService } from "../relationships/relationship.service";
+import { userService, type PublicUser } from "../users/user.service";
 
 type Tab = "overview" | "edit" | "security";
 
@@ -11,6 +13,8 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [followingUsers, setFollowingUsers] = useState<PublicUser[]>([]);
+  const [followingLoading, setFollowingLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [formData, setFormData] = useState({
     display_name: user?.display_name || "",
@@ -44,6 +48,40 @@ const Profile = () => {
       setTabIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    const loadFollowing = async () => {
+      if (!user?.id) {
+        setFollowingUsers([]);
+        return;
+      }
+
+      setFollowingLoading(true);
+      try {
+        const following = await relationshipService.listFollowing(user.id);
+        const uniqueIds = Array.from(new Set(following.map((item) => Number(item.targetUserId)).filter((id) => Number.isInteger(id) && id > 0)));
+        const profiles = await Promise.all(
+          uniqueIds.map(async (id) => {
+            try {
+              return await userService.getUserById(id);
+            } catch {
+              return {
+                id,
+                username: `user${id}`,
+              } as PublicUser;
+            }
+          })
+        );
+        setFollowingUsers(profiles);
+      } catch {
+        setFollowingUsers([]);
+      } finally {
+        setFollowingLoading(false);
+      }
+    };
+
+    void loadFollowing();
+  }, [user?.id]);
 
   const handleAvatarUrlChange = (val: string) => {
     setFormData((f) => ({ ...f, avatar_url: val }));
@@ -156,8 +194,8 @@ const Profile = () => {
             </div>
             <div className="profile-stat-divider" />
             <div className="profile-stat">
-              <span className="profile-stat-value">0</span>
-              <span className="profile-stat-label">Seguidores</span>
+              <span className="profile-stat-value">{followingUsers.length}</span>
+              <span className="profile-stat-label">Siguiendo</span>
             </div>
             <div className="profile-stat-divider" />
             <div className="profile-stat">
@@ -226,6 +264,36 @@ const Profile = () => {
                 <button className="cta-btn primary" onClick={() => setActiveTab("edit")}>
                   Modificar identidad
                 </button>
+              </div>
+
+              <div className="following-section">
+                <div className="following-header">
+                  <p className="following-title">Siguiendo</p>
+                  <span className="following-count">{followingUsers.length}</span>
+                </div>
+
+                {followingLoading ? (
+                  <p className="following-empty">Cargando lista...</p>
+                ) : followingUsers.length === 0 ? (
+                  <p className="following-empty">Aún no sigues a nadie.</p>
+                ) : (
+                  <div className="following-list">
+                    {followingUsers.map((followed) => (
+                      <div key={followed.id} className="following-item">
+                        <div className="following-avatar">
+                          {followed.avatar_url ? (
+                            <img src={followed.avatar_url} alt={followed.display_name || followed.username} />
+                          ) : (
+                            <span>{(followed.display_name || followed.username || "?").slice(0, 1).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div className="following-meta">
+                          <p className="following-name">{followed.display_name || followed.username}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

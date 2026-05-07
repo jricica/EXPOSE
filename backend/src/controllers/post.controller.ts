@@ -30,8 +30,9 @@ export const createPost = async (req: Request, res: Response) => {
 
 export const listPosts = async (req: Request, res: Response) => {
 	try {
-		const { userId, includeExpired, limit, cursorCreatedAt, cursorPostId } = req.query;
+		const { userId, includeExpired, limit, cursorCreatedAt, cursorPostId, scope } = req.query;
 		const currentUserId = tryGetUserId(req);
+		const parsedScope = scope === 'following' ? 'following' : 'general';
 
 		if ((cursorCreatedAt && !cursorPostId) || (cursorPostId && !cursorCreatedAt)) {
 			return res.status(400).json({ message: "Cursor incompleto." });
@@ -54,6 +55,7 @@ export const listPosts = async (req: Request, res: Response) => {
 			userId: userId ? Number(userId) : undefined,
 			includeExpired: includeExpired === "true",
 			currentUserId,
+			feedScope: parsedScope,
 			limit: limit ? Number(limit) : undefined,
 			cursorCreatedAt: parsedCursorDate,
 			cursorPostId: parsedCursorPostId,

@@ -2,12 +2,16 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { relationshipService } from '../services/relationship.service';
 import { getUserId } from '../utils/auth';
+import { messageService } from '../services/message.service';
 
 export const followUser = async (req: Request, res: Response) => {
   try {
     const currentUserId = getUserId(req);
     const targetUserId = Number(req.params.id);
     const rel = await relationshipService.follow(currentUserId, targetUserId);
+    await messageService.getOrCreateDirectConversation(currentUserId, targetUserId, {
+      skipFollowValidation: true,
+    });
     res.status(201).json(rel);
   } catch (err) {
     Sentry.captureException(err);

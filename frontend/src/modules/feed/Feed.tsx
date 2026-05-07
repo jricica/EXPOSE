@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { HttpError } from '../../../services/api';
 import Layout from '../../components/Layout';
 import { useAuth } from '../auth/AuthContext';
-import { postService, type FeedCursor } from '../posts/post.service';
+import { postService, type FeedCursor, type FeedScope } from '../posts/post.service';
 import type { PostComment, PostItem } from '../posts/post.types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCcw, Send, MessageSquare, Heart, MessageCircle, MoreHorizontal, Trash2, ImagePlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { messageService } from '../messages/message.service';
+import { relationshipService } from '../relationships/relationship.service';
+import { type PublicUser, userService } from '../users/user.service';
 import './Feed.css';
 
 const Feed = () => {
@@ -20,7 +22,7 @@ const Feed = () => {
   const [publishing, setPublishing] = useState(false);
   const [nextCursor, setNextCursor] = useState<FeedCursor | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
+  const [feedScope, setFeedScope] = useState<FeedScope>('general');
   const [ttlMinutes, setTtlMinutes] = useState(24 * 60);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [openCommentsByPost, setOpenCommentsByPost] = useState<Record<number, boolean>>({});
@@ -28,7 +30,12 @@ const Feed = () => {
   const [loadingCommentsByPost, setLoadingCommentsByPost] = useState<Record<number, boolean>>({});
   const [commentDraftByPost, setCommentDraftByPost] = useState<Record<number, string>>({});
   const [brokenAvatarByPost, setBrokenAvatarByPost] = useState<Record<number, boolean>>({});
+  const [followingIds, setFollowingIds] = useState<Set<number>>(new Set());
+  const [hasNewPosts, setHasNewPosts] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [userSearch, setUserSearch] = useState('');
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [searchedUsers, setSearchedUsers] = useState<PublicUser[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,13 +43,13 @@ const Feed = () => {
     return () => window.clearInterval(timer);
   }, []);
 
-  const loadPosts = async (cursor?: FeedCursor, initial = false) => {
+  const loadPosts = async (cursor?: FeedCursor, initial = false, scope: FeedScope = feedScope) => {
     try {
       if (initial) setLoading(true);
       else setLoadingMore(true);
 
       setError(null);
-      const response = await postService.listFeed(20, cursor);
+      const response = await postService.listFeed(20, cursor, scope);
 
       if (initial) setPosts(response.posts || []);
       else setPosts((prev) => [...prev, ...(response.posts || [])]);
@@ -58,8 +65,23 @@ const Feed = () => {
   };
 
   useEffect(() => {
-    void loadPosts(undefined, true);
-  }, []);
+    void loadPosts(undefined, true, feedScope);
+  }, [feedScope]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadFollowing = async () => {
+      try {
+        const list = await relationshipService.listFollowing(user.id);
+        setFollowingIds(new Set(list.map((item) => Number(item.targetUserId))));
+      } catch {
+        setFollowingIds(new Set());
+      }
+    };
+
+    void loadFollowing();
+  }, [user?.id]);
 
   useEffect(() => {
     const apiBase = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
@@ -85,13 +107,29 @@ const Feed = () => {
 
   const handleRefreshFeed = () => {
     setHasNewPosts(false);
-    void loadPosts(undefined, true);
+    void loadPosts(undefined, true, feedScope);
   };
 
-  const filteredPosts = useMemo(() => {
-    if (!showOnlyMine || !user) return posts;
-    return posts.filter((post) => post.userId === user.id);
-  }, [posts, showOnlyMine, user]);
+  const handleSearchUsers = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = userSearch.trim();
+    if (query.length < 2) {
+      setSearchedUsers([]);
+      return;
+    }
+
+    try {
+      setSearchingUsers(true);
+      const results = await userService.searchUsers(query);
+      setSearchedUsers(results.filter((item) => item.id !== user?.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo buscar usuarios.');
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  const filteredPosts = useMemo(() => posts, [posts]);
 
   const handleSetLike = async (postId: number, liked: boolean) => {
     try {
@@ -148,12 +186,51 @@ const Feed = () => {
     }
   };
 
+  const handleStartMessageWithUser = async (targetUserId: number) => {
+    if (!user || targetUserId === user.id) return;
+    try {
+      const convo = await messageService.createDirectConversation(targetUserId);
+      navigate('/messages', { state: { conversationId: convo.conversationId } });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo abrir el chat directo.');
+    }
+  };
+
   const handleDeletePost = async (postId: number) => {
     try {
       await postService.deletePost(postId);
       setPosts((prev) => prev.filter((post) => post.id !== postId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el post.');
+    }
+  };
+
+  const handleToggleFollow = async (targetUserId: number) => {
+    if (!user || targetUserId === user.id) {
+      return;
+    }
+
+    const isFollowing = followingIds.has(targetUserId);
+
+    try {
+      if (isFollowing) {
+        await relationshipService.unfollow(targetUserId);
+        setFollowingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUserId);
+          return next;
+        });
+        return;
+      }
+
+      await relationshipService.follow(targetUserId);
+      setFollowingIds((prev) => {
+        const next = new Set(prev);
+        next.add(targetUserId);
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el follow.');
     }
   };
 
@@ -275,17 +352,74 @@ const Feed = () => {
           </div>
           
           <div className="feed-controls">
-            <button className="btn-refresh" onClick={() => loadPosts(undefined, true)} disabled={loading}>
+            <button className="btn-refresh" onClick={handleRefreshFeed} disabled={loading}>
               <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
-            <button 
-              className={`btn-filter ${showOnlyMine ? 'active' : ''}`} 
-              onClick={() => setShowOnlyMine(!showOnlyMine)}
-            >
-              {showOnlyMine ? 'Mis rastros' : 'Todo el canal'}
-            </button>
+            <div className="feed-scope-toggle">
+              <button
+                className={`btn-filter ${feedScope === 'general' ? 'active' : ''}`}
+                onClick={() => setFeedScope('general')}
+              >
+                General
+              </button>
+              <button
+                className={`btn-filter ${feedScope === 'following' ? 'active' : ''}`}
+                onClick={() => setFeedScope('following')}
+              >
+                Following
+              </button>
+            </div>
           </div>
         </header>
+
+        <section className="user-search-card">
+          <form className="user-search-form" onSubmit={handleSearchUsers}>
+            <input
+              type="search"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Buscar usuarios"
+              minLength={2}
+            />
+            <button type="submit" disabled={searchingUsers || userSearch.trim().length < 2}>
+              {searchingUsers ? 'Buscando...' : 'Buscar'}
+            </button>
+          </form>
+
+          {searchedUsers.length > 0 && (
+            <div className="user-search-results">
+              {searchedUsers.map((searchedUser) => {
+                const alias = getGeneratedAlias(searchedUser.id);
+                const isFollowing = followingIds.has(searchedUser.id);
+
+                return (
+                  <div key={searchedUser.id} className="user-result-item">
+                    <div className="user-result-meta">
+                      <span className="user-result-name">{alias}</span>
+                      <span className="user-result-username">ID anónimo #{String(searchedUser.id).slice(-4)}</span>
+                    </div>
+                    <div className="user-result-actions">
+                      <button
+                        type="button"
+                        className={`result-follow-btn ${isFollowing ? 'active' : ''}`}
+                        onClick={() => handleToggleFollow(searchedUser.id)}
+                      >
+                        {isFollowing ? 'Siguiendo' : 'Seguir'}
+                      </button>
+                      <button
+                        type="button"
+                        className="result-message-btn"
+                        onClick={() => handleStartMessageWithUser(searchedUser.id)}
+                      >
+                        Mensaje
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <form className="feed-transmit-card" onSubmit={handlePublish}>
           <textarea
@@ -415,19 +549,6 @@ const Feed = () => {
                       <button className="card-opt" title="Más opciones"><MoreHorizontal size={18} /></button>
                     </div>
                   </div>
-
-        {filteredPosts.map((post) => (
-          <article key={post.id} className="feed-card">
-            <div className="feed-author">
-              <strong>{post.author?.displayName || post.author?.username || `Usuario #${post.userId}`}</strong>
-              <span>@{post.author?.username || `user${post.userId}`}</span>
-            </div>
-            <p className="feed-content">{post.content}</p>
-            <div className="feed-meta">
-              <span>{post.likes || 0} likes</span>
-              <span>{post.commentCount || 0} comentarios</span>
-              <span>{new Date(post.createdAt).toLocaleString()}</span>
-            </div>
                   <div className="card-body">
                     <p>{post.content}</p>
                     {post.media_url && (
@@ -452,6 +573,15 @@ const Feed = () => {
                         <MessageCircle size={18} />
                         <span>{post.commentCount || 0}</span>
                       </button>
+
+                      {post.userId !== user?.id && (
+                        <button
+                          className={`action-btn follow-btn ${followingIds.has(post.userId) ? 'active' : ''}`}
+                          onClick={() => handleToggleFollow(post.userId)}
+                        >
+                          {followingIds.has(post.userId) ? 'Siguiendo' : 'Seguir'}
+                        </button>
+                      )}
                     </div>
 
                     <button 
