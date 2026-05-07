@@ -74,13 +74,36 @@ body::before {
   pointer-events: none;
 
   background-image:
-    radial-gradient(rgba(255,255,255,0.08) 0.5px, transparent 0.5px);
+    radial-gradient(rgba(255,255,255,0.08) 0.5px, transparent 0.5px),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.012),
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
 
-  background-size: 5px 5px;
+  background-size:
+    5px 5px,
+    100% 3px;
 
-  opacity: 0.06;
+  opacity: 0.08;
+
+  mix-blend-mode: soft-light;
+
+  animation: scanlinesMove 12s linear infinite;
 
   z-index: 0;
+}
+
+@keyframes scanlinesMove {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(12px);
+  }
 }
 
 body::after {
