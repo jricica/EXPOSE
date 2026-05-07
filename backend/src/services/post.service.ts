@@ -30,6 +30,7 @@ export interface PostListQuery {
 	userId?: UserId;
 	includeExpired?: boolean;
 	currentUserId?: UserId;
+	feedScope?: 'general' | 'following';
 	limit?: number;
 	cursorCreatedAt?: Date;
 	cursorPostId?: PostId;
@@ -102,6 +103,7 @@ export class PostService {
 			userId: query.userId,
 			expiresAfter: query.includeExpired ? undefined : this.clock(),
 			currentUserId: query.currentUserId,
+			feedScope: query.feedScope ?? 'general',
 			limit: limitPlusOne,
 			cursorCreatedAt: query.cursorCreatedAt,
 			cursorPostId: query.cursorPostId,
@@ -137,29 +139,52 @@ export class PostService {
 		userId?: UserId;
 		expiresAfter?: Date;
 		currentUserId?: UserId;
+		feedScope: 'general' | 'following';
 		limit: number;
 		cursorCreatedAt?: Date;
 		cursorPostId?: PostId;
 	}): Promise<Post[]> {
-		if (filters.userId || !filters.currentUserId) {
+		if (filters.userId || filters.feedScope !== 'following' || !filters.currentUserId) {
 			return this.repository.findMany(filters);
 		}
 
-		const timelinePostIds = await this.timelineRepository.listPostIds({
-			feedUserId: filters.currentUserId,
-			limit: filters.limit,
-			cursorCreatedAt: filters.cursorCreatedAt,
-			cursorPostId: filters.cursorPostId,
+		const following = await this.relationships.listFollowing(filters.currentUserId);
+		const authorIds = Array.from(
+			new Set([
+				filters.currentUserId,
+				...following
+					.filter((relationship) => relationship.relationshipType === 'follow')
+					.map((relationship) => relationship.targetUserId),
+			]),
+		);
+
+		const expiresAfter = filters.expiresAfter ?? new Date(0);
+		const references = await this.repository.listVisiblePostReferencesByAuthors(authorIds, expiresAfter);
+
+		const sortedReferences = references.sort((a, b) => {
+			const byDate = b.createdAt.getTime() - a.createdAt.getTime();
+			if (byDate !== 0) return byDate;
+			return b.postId - a.postId;
 		});
 
-		const posts = await this.repository.findByIds(timelinePostIds, filters.currentUserId);
+		const filteredReferences = filters.cursorCreatedAt && filters.cursorPostId !== undefined
+			? sortedReferences.filter((reference) => {
+				if (reference.createdAt.getTime() < filters.cursorCreatedAt!.getTime()) {
+					return true;
+				}
+				if (reference.createdAt.getTime() > filters.cursorCreatedAt!.getTime()) {
+					return false;
+				}
+				return reference.postId < filters.cursorPostId!;
+			})
+			: sortedReferences;
 
-		if (!filters.expiresAfter) {
-			return posts;
+		const postIds = filteredReferences.slice(0, filters.limit).map((reference) => reference.postId);
+		if (postIds.length === 0) {
+			return [];
 		}
 
-		const expiresAfterMs = filters.expiresAfter.getTime();
-		return posts.filter((post) => post.expiresAt.getTime() > expiresAfterMs);
+		return this.repository.findByIds(postIds, filters.currentUserId);
 	}
 
 	private async publishPostToTimelines(post: Post): Promise<void> {

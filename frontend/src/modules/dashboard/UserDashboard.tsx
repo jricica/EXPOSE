@@ -152,6 +152,19 @@ const UserDashboard = () => {
                   <ArrowRight className="action-arrow" size={20} />
                 </Link>
               </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <Link to="/messages" className="action-card interactive-card">
+                  <div className="action-icon blue">
+                    <MessageSquare size={24} />
+                  </div>
+                  <div className="action-text">
+                    <h3>Mensajes Directos</h3>
+                    <p>Habla con otros usuarios en privado</p>
+                  </div>
+                  <ArrowRight className="action-arrow" size={20} />
+                </Link>
+              </motion.div>
             </div>
 
             <div className="dash-col-right">

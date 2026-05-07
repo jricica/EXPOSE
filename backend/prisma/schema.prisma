@@ -11,15 +11,17 @@ model User {
   id           Int        @id @default(autoincrement())
   username     String     @unique @db.VarChar(50)
   email        String     @unique @db.VarChar(255)
-  passwordHash String     @db.VarChar(255)
-  lastLogin    DateTime?  @db.DateTime(0)
-  createdAt    DateTime   @default(now()) @db.DateTime(0)
   bio          String?    @db.Text
   display_name String?    @db.VarChar(100)
   avatar_url   String?    @db.Text
+  passwordHash String     @db.VarChar(255)
+  lastLogin    DateTime?  @db.DateTime(0)
+  createdAt    DateTime   @default(now()) @db.DateTime(0)
   role         Int        @default(1)
   posts        Post[]
   post_likes   PostLike[]
+  followers  Follow[] @relation("UserFollowers")
+  following  Follow[] @relation("UserFollowing")
 
   @@map("users")
 }
@@ -35,6 +37,8 @@ model Post {
   is_deleted Boolean    @default(false)
   user       User       @relation(fields: [userId], references: [id])
   likesBy    PostLike[]
+
+  @@index([userId], map: "Post_userId_fkey")
 }
 
 model PostLike {
@@ -46,4 +50,19 @@ model PostLike {
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([postId, userId], name: "unique_like")
+  @@index([userId], map: "PostLike_userId_fkey")
+}
+
+model Follow {
+  id           Int      @id @default(autoincrement())
+
+  followerId   Int
+  followingId  Int
+
+  follower     User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@unique([followerId, followingId])
 }

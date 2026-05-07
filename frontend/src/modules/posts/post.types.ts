@@ -37,9 +37,19 @@ export type LikeState = {
 };
 
 export type PostComment = {
-  id: string;
+  commentId: string;
   postId: number;
   userId: number;
   content: string;
   createdAt: string;
+  moderationStatus?: 'active' | 'hidden';
+  reportsCount?: number;
+};
+
+export type PostCommentsResponse = {
+  comments: PostComment[];
+  pagination: {
+    limit: number;
+    nextCursorCommentId: string | null;
+  };
 };

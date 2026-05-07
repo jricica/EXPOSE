@@ -3,6 +3,7 @@ import Login from './modules/auth/Login';
 import Register from './modules/auth/Register';
 import Feed from './modules/feed/Feed';
 import Profile from './modules/profile/Profile';
+import Messages from './modules/messages/Messages';
 import PrivateRoute from './shared/auth/PrivateRoute';
 import { useAuth } from './modules/auth/AuthContext';
 import UserDashboard from './modules/dashboard/UserDashboard';
@@ -28,6 +29,7 @@ const RootRedirect = () => {
 
   return <Navigate to={isAdmin ? '/admin/dashboard' : '/user/dashboard'} replace />;
 };
+
 
 function App() {
   return (
@@ -68,6 +70,15 @@ function App() {
         element={
           <PrivateRoute>
             <Profile />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/messages"
+        element={
+          <PrivateRoute>
+            <Messages />
           </PrivateRoute>
         }
       />

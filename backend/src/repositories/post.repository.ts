@@ -48,8 +48,8 @@ const parseDate = (value?: string | number | Date): Date =>
   value instanceof Date ? value : new Date(value ?? Date.now());
 
 const mapItemToPost = (item: any, likedByMe = false): Post => ({
-  id: item.postId,
-  userId: item.userId,
+  id: Number(item.postId),
+  userId: Number(item.userId),
   content: item.content,
   media_url: item.media_url,
   repostOfPostId: item.repostOfPostId !== undefined ? Number(item.repostOfPostId) : undefined,
@@ -103,13 +103,13 @@ export class PostRepository {
       new PutCommand({
         TableName: TABLES.FEED,
         Item: {
-          postId,
-          userId: data.userId,
+          postId: String(postId),
+          userId: String(data.userId),
           content: data.content,
           media_url: data.media_url,
-          repostOfPostId: data.repostOfPostId,
-          originalAuthorId: data.originalAuthorId,
-          rootPostId: data.rootPostId,
+          repostOfPostId: data.repostOfPostId ? String(data.repostOfPostId) : undefined,
+          originalAuthorId: data.originalAuthorId ? String(data.originalAuthorId) : undefined,
+          rootPostId: data.rootPostId ? String(data.rootPostId) : undefined,
           createdAt: data.createdAt.toISOString(),
           expiresAt: data.expiresAt.toISOString(),
           likes: 0,
@@ -130,7 +130,7 @@ export class PostRepository {
     const result = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.FEED,
-        Key: { postId: id },
+        Key: { postId: String(id) },
       })
     );
 
@@ -146,7 +146,7 @@ export class PostRepository {
     const result = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.POST_LIKES,
-        Key: { postId, userId },
+        Key: { postId: String(postId), userId: String(userId) },
       })
     );
 
@@ -177,7 +177,7 @@ export class PostRepository {
         IndexName: INDEXES.FEED_USER_CREATED_AT,
         KeyConditionExpression: 'userId = :uid',
         ExpressionAttributeValues: {
-          ':uid': filters.userId,
+          ':uid': String(filters.userId),
           ...expressionValues,
         },
         FilterExpression: filterExpression,
@@ -192,7 +192,7 @@ export class PostRepository {
             FilterExpression: `${filterExpression} AND userId = :uid`,
             ExpressionAttributeValues: {
               ...expressionValues,
-              ':uid': filters.userId,
+              ':uid': String(filters.userId),
             },
           },
           items,
@@ -249,7 +249,7 @@ export class PostRepository {
       new BatchGetCommand({
         RequestItems: {
           [TABLES.FEED]: {
-            Keys: orderedUniquePostIds.map((postId) => ({ postId })),
+            Keys: orderedUniquePostIds.map((postId) => ({ postId: String(postId) })),
           },
         },
       }),
@@ -299,7 +299,7 @@ export class PostRepository {
               'expiresAt > :exp',
             ].join(' AND '),
             ExpressionAttributeValues: {
-              ':uid': authorId,
+              ':uid': String(authorId),
               ':true': true,
               ':fanOutReady': true,
               ':exp': expiresAfterIso,
@@ -369,7 +369,7 @@ export class PostRepository {
       return {};
     }
 
-    const keys = postIds.map((postId) => ({ postId, userId }));
+    const keys = postIds.map((postId) => ({ postId: String(postId), userId: String(userId) }));
     const response = await ddbDocClient.send(
       new BatchGetCommand({
         RequestItems: {
@@ -413,7 +413,7 @@ export class PostRepository {
               KeyConditionExpression: 'userId = :uid',
               FilterExpression: filterExpression,
               ExpressionAttributeValues: {
-                ':uid': filters.userId,
+                ':uid': String(filters.userId),
                 ...expressionValues,
               },
               Select: 'COUNT',
@@ -433,7 +433,7 @@ export class PostRepository {
               FilterExpression: `${filterExpression} AND userId = :uid`,
               ExpressionAttributeValues: {
                 ...expressionValues,
-                ':uid': filters.userId,
+                ':uid': String(filters.userId),
               },
               Select: 'COUNT',
               ExclusiveStartKey: lastKey,
@@ -469,7 +469,7 @@ export class PostRepository {
     await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.FEED,
-        Key: { postId: id },
+        Key: { postId: String(id) },
         UpdateExpression: 'SET fanOutReady = :ready',
         ExpressionAttributeValues: {
           ':ready': true,
@@ -483,7 +483,7 @@ export class PostRepository {
     await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.FEED,
-        Key: { postId: id },
+        Key: { postId: String(id) },
         UpdateExpression: 'SET expiresAt = :exp',
         ExpressionAttributeValues: {
           ':exp': expiresAt.toISOString(),
@@ -497,7 +497,7 @@ export class PostRepository {
     await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.FEED,
-        Key: { postId: id },
+        Key: { postId: String(id) },
         UpdateExpression: 'SET is_deleted = :true',
         ExpressionAttributeValues: { ':true': true },
         ConditionExpression: 'attribute_exists(postId)',
@@ -528,7 +528,7 @@ export class PostRepository {
         await ddbDocClient.send(
           new UpdateCommand({
             TableName: TABLES.FEED,
-            Key: { postId: item.postId },
+            Key: { postId: String(item.postId) },
             UpdateExpression: 'SET is_deleted = :true',
             ExpressionAttributeValues: { ':true': true },
           })
@@ -553,8 +553,8 @@ export class PostRepository {
               Put: {
                 TableName: TABLES.POST_LIKES,
                 Item: {
-                  postId,
-                  userId,
+                  postId: String(postId),
+                  userId: String(userId),
                   createdAt: new Date().toISOString(),
                 },
                 ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
@@ -563,7 +563,7 @@ export class PostRepository {
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId },
+                Key: { postId: String(postId) },
                 UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :one',
                 ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
                 ExpressionAttributeNames: { '#likes': 'likes' },
@@ -581,14 +581,14 @@ export class PostRepository {
             {
               Delete: {
                 TableName: TABLES.POST_LIKES,
-                Key: { postId, userId },
+                Key: { postId: String(postId), userId: String(userId) },
                 ConditionExpression: 'attribute_exists(postId) AND attribute_exists(userId)',
               },
             },
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId },
+                Key: { postId: String(postId) },
                 UpdateExpression: 'SET #likes = #likes - :one',
                 ConditionExpression: 'attribute_exists(postId) AND #likes >= :one AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
                 ExpressionAttributeNames: { '#likes': 'likes' },
@@ -622,14 +622,14 @@ export class PostRepository {
       ddbDocClient.send(
         new GetCommand({
           TableName: TABLES.FEED,
-          Key: { postId },
+          Key: { postId: String(postId) },
           ConsistentRead: true,
         })
       ),
       ddbDocClient.send(
         new GetCommand({
           TableName: TABLES.POST_LIKES,
-          Key: { postId, userId },
+          Key: { postId: String(postId), userId: String(userId) },
           ConsistentRead: true,
         })
       ),
@@ -661,9 +661,9 @@ export class PostRepository {
             Put: {
               TableName: TABLES.POST_COMMENTS,
               Item: {
-                postId,
-                commentId,
-                userId,
+                postId: String(postId),
+                commentId: String(commentId),
+                userId: String(userId),
                 content,
                 createdAt: now.toISOString(),
                 updatedAt: now.toISOString(),
@@ -677,7 +677,7 @@ export class PostRepository {
           {
             Update: {
               TableName: TABLES.FEED,
-              Key: { postId },
+              Key: { postId: String(postId) },
               UpdateExpression: 'SET commentCount = if_not_exists(commentCount, :zero) + :one',
               ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
               ExpressionAttributeValues: {
@@ -707,7 +707,7 @@ export class PostRepository {
   async listComments(postId: PostId, query: CommentListQuery): Promise<PaginatedComments> {
     const comments: Comment[] = [];
     let lastKey: Record<string, any> | undefined = query.cursorCommentId
-      ? { postId, commentId: query.cursorCommentId }
+      ? { postId: String(postId), commentId: String(query.cursorCommentId) }
       : undefined;
 
     do {
@@ -721,7 +721,7 @@ export class PostRepository {
           TableName: TABLES.POST_COMMENTS,
           KeyConditionExpression: 'postId = :pid',
           ExpressionAttributeValues: {
-            ':pid': postId,
+            ':pid': String(postId),
             ':active': 'active',
           },
           ExpressionAttributeNames: {
@@ -754,7 +754,7 @@ export class PostRepository {
     const incrementResult = await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.POST_COMMENTS,
-        Key: { postId, commentId },
+        Key: { postId: String(postId), commentId: String(commentId) },
         UpdateExpression: 'SET reportsCount = if_not_exists(reportsCount, :zero) + :one, updatedAt = :updatedAt',
         ExpressionAttributeValues: {
           ':zero': 0,
@@ -779,7 +779,7 @@ export class PostRepository {
               {
                 Update: {
                   TableName: TABLES.POST_COMMENTS,
-                  Key: { postId, commentId },
+                  Key: { postId: String(postId), commentId: String(commentId) },
                   UpdateExpression: 'SET moderationStatus = :hidden, moderationReason = :reason, moderatedAt = :moderatedAt, updatedAt = :updatedAt',
                   ConditionExpression: 'attribute_exists(postId) AND attribute_exists(commentId) AND (moderationStatus = :active OR attribute_not_exists(moderationStatus))',
                   ExpressionAttributeValues: {
@@ -794,7 +794,7 @@ export class PostRepository {
               {
                 Update: {
                   TableName: TABLES.FEED,
-                  Key: { postId },
+                  Key: { postId: String(postId) },
                   UpdateExpression: 'SET commentCount = commentCount - :one',
                   ConditionExpression: 'attribute_exists(postId) AND commentCount >= :one',
                   ExpressionAttributeValues: {
@@ -856,7 +856,7 @@ export class PostRepository {
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId },
+                Key: { postId: String(postId) },
                 UpdateExpression: 'SET commentCount = commentCount - :one',
                 ConditionExpression: 'attribute_exists(postId) AND commentCount >= :one',
                 ExpressionAttributeValues: {
@@ -889,9 +889,9 @@ export class PostRepository {
               Put: {
                 TableName: TABLES.POST_SHARES,
                 Item: {
-                  postId: input.originalPostId,
-                  userId: input.actorUserId,
-                  repostPostId,
+                  postId: String(input.originalPostId),
+                  userId: String(input.actorUserId),
+                  repostPostId: String(repostPostId),
                   createdAt: createdAt.toISOString(),
                 },
                 ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
@@ -900,7 +900,7 @@ export class PostRepository {
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId: input.originalPostId },
+                Key: { postId: String(input.originalPostId) },
                 UpdateExpression: 'SET shareCount = if_not_exists(shareCount, :zero) + :one',
                 ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
                 ExpressionAttributeValues: {
@@ -914,8 +914,8 @@ export class PostRepository {
               Put: {
                 TableName: TABLES.FEED,
                 Item: {
-                  postId: repostPostId,
-                  userId: input.actorUserId,
+                  postId: String(repostPostId),
+                  userId: String(input.actorUserId),
                   content: input.content,
                   createdAt: createdAt.toISOString(),
                   expiresAt: input.expiresAt.toISOString(),
@@ -925,9 +925,9 @@ export class PostRepository {
                   reportsCount: 0,
                   fanOutReady: false,
                   is_deleted: false,
-                  repostOfPostId: input.originalPostId,
-                  originalAuthorId: input.originalAuthorId,
-                  rootPostId: input.rootPostId,
+                  repostOfPostId: input.originalPostId ? String(input.originalPostId) : undefined,
+                  originalAuthorId: input.originalAuthorId ? String(input.originalAuthorId) : undefined,
+                  rootPostId: input.rootPostId ? String(input.rootPostId) : undefined,
                   is_sensitive: input.is_sensitive ?? false, 
                 },
                 ConditionExpression: 'attribute_not_exists(postId)',
@@ -947,7 +947,7 @@ export class PostRepository {
     const existingShare = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.POST_SHARES,
-        Key: { postId: input.originalPostId, userId: input.actorUserId },
+        Key: { postId: String(input.originalPostId), userId: String(input.actorUserId) },
         ConsistentRead: true,
       })
     );
@@ -972,8 +972,8 @@ export class PostRepository {
               Put: {
                 TableName: TABLES.POST_SHARES,
                 Item: {
-                  postId,
-                  userId,
+                  postId: String(postId),
+                  userId: String(userId),
                   createdAt: new Date().toISOString(),
                 },
                 ConditionExpression: 'attribute_not_exists(postId) AND attribute_not_exists(userId)',
@@ -982,7 +982,7 @@ export class PostRepository {
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId },
+                Key: { postId: String(postId) },
                 UpdateExpression: 'SET shareCount = if_not_exists(shareCount, :zero) + :one',
                 ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
                 ExpressionAttributeValues: {
@@ -1009,7 +1009,7 @@ export class PostRepository {
     const result = await ddbDocClient.send(
       new UpdateCommand({
         TableName: TABLES.FEED,
-        Key: { postId },
+        Key: { postId: String(postId) },
         UpdateExpression: 'SET reportsCount = if_not_exists(reportsCount, :zero) + :one',
         ExpressionAttributeValues: {
           ':zero': 0,

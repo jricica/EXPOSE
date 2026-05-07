@@ -11,9 +11,7 @@ export class UploadController {
       }
 
       const key = await storageService.uploadAvatar(req.file);
-
-const baseUrl = await storageService.getPublicUrl(key);
-const url = `${baseUrl}?v=${Date.now()}`;
+      const url = await storageService.getPublicUrl(key);
 
       res.status(200).json({
         key,

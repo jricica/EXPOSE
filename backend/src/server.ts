@@ -96,7 +96,7 @@ if (process.env.NODE_ENV !== 'production') {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/api/posts', postRoutes);
+app.use('/api', postRoutes);
 app.use('/api/relationships', relationshipRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api', userRoutes);

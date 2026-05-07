@@ -6,10 +6,10 @@ import { getUserId } from '../utils/auth';
 export const createDirectConversation = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const participantUserId = Number(req.body?.participantUserId);
+    const participantUserId = Number(req.body?.participantUserId || req.body?.targetUserId);
 
     if (!Number.isInteger(participantUserId) || participantUserId <= 0) {
-      return res.status(400).json({ message: 'participantUserId inválido' });
+      return res.status(400).json({ message: 'participantUserId o targetUserId inválido' });
     }
 
     const conversation = await messageService.getOrCreateDirectConversation(userId, participantUserId);
@@ -35,13 +35,13 @@ export const sendConversationMessage = async (req: Request, res: Response) => {
   try {
     const senderId = getUserId(req);
     const conversationId = String(req.params.conversationId);
-    const { content } = req.body ?? {};
+    const { content, mediaUrl, mediaType } = req.body ?? {};
 
-    if (!content || typeof content !== 'string') {
-      return res.status(400).json({ message: 'content es requerido y debe ser string' });
+    if (!content && !mediaUrl) {
+      return res.status(400).json({ message: 'content o mediaUrl es requerido' });
     }
 
-    const message = await messageService.sendMessageToConversation(senderId, conversationId, content);
+    const message = await messageService.sendMessageToConversation(senderId, conversationId, content, mediaUrl, mediaType);
     res.status(201).json(message);
   } catch (err) {
     Sentry.captureException(err);
@@ -110,11 +110,55 @@ export const markConversationRead = async (req: Request, res: Response) => {
   }
 };
 
+export const editConversationMessage = async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const conversationId = String(req.params.conversationId);
+    const messageId = String(req.params.messageId);
+    const { content } = req.body ?? {};
+
+    if (!content || typeof content !== 'string') {
+      return res.status(400).json({ message: 'content es requerido y debe ser string' });
+    }
+
+    const updated = await messageService.editConversationMessage(userId, conversationId, messageId, content);
+    res.json(updated);
+  } catch (err) {
+    Sentry.captureException(err);
+    if (err instanceof Error && /no autorizado/i.test(err.message)) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err instanceof Error && /no encontrada|no encontrado/i.test(err.message)) {
+      return res.status(404).json({ message: err.message });
+    }
+    res.status(400).json({ message: err instanceof Error ? err.message : 'Error al editar mensaje.' });
+  }
+};
+
+export const deleteConversationMessage = async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const conversationId = String(req.params.conversationId);
+    const messageId = String(req.params.messageId);
+    await messageService.deleteConversationMessage(userId, conversationId, messageId);
+    res.status(204).send();
+  } catch (err) {
+    Sentry.captureException(err);
+    if (err instanceof Error && /no autorizado/i.test(err.message)) {
+      return res.status(403).json({ message: err.message });
+    }
+    if (err instanceof Error && /no encontrada|no encontrado/i.test(err.message)) {
+      return res.status(404).json({ message: err.message });
+    }
+    res.status(400).json({ message: err instanceof Error ? err.message : 'Error al eliminar mensaje.' });
+  }
+};
+
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const senderId = getUserId(req);
-    const { receiverId, content, conversationId } = req.body;
-    const message = await messageService.sendMessage(senderId, Number(receiverId), content, conversationId);
+    const { receiverId, content, conversationId, mediaUrl, mediaType } = req.body;
+    const message = await messageService.sendMessage(senderId, Number(receiverId), content, conversationId, mediaUrl, mediaType);
     res.status(201).json(message);
   } catch (err) {
     Sentry.captureException(err);

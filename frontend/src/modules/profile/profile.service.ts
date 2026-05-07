@@ -1,9 +1,9 @@
-import { patch, get } from "../../../services/api";
+import { patch, get, postForm } from "../../../services/api";
 
 export interface ProfileUpdateInput {
     display_name?: string;
     bio?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
 }
 
 export const profileService = {
@@ -13,5 +13,11 @@ export const profileService = {
     
     async getProfile() {
         return await get<any>("/auth/me");
+    },
+
+    async uploadAvatar(file: File) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return await postForm<{ url: string }>("/upload/profile-picture", formData);
     }
 };

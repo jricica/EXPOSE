@@ -106,10 +106,10 @@ export class FeedTimelineRepository {
           Put: {
             TableName: TABLES.FEED_TIMELINE,
             Item: {
-              feedUserId,
+              feedUserId: String(feedUserId),
               sk,
-              postId,
-              actorUserId,
+              postId: String(postId),
+              actorUserId: String(actorUserId),
               createdAt: createdAtIso,
             },
             ConditionExpression: 'attribute_not_exists(feedUserId) AND attribute_not_exists(sk)',
@@ -173,7 +173,7 @@ export class FeedTimelineRepository {
     }
 
     const expressionAttributeValues: Record<string, unknown> = {
-      ':feedUserId': input.feedUserId,
+      ':feedUserId': String(input.feedUserId),
     };
 
     let keyConditionExpression = 'feedUserId = :feedUserId';
@@ -221,7 +221,7 @@ export class FeedTimelineRepository {
           TableName: TABLES.FEED_TIMELINE,
           KeyConditionExpression: 'feedUserId = :feedUserId',
           ExpressionAttributeValues: {
-            ':feedUserId': feedUserId,
+            ':feedUserId': String(feedUserId),
           },
           ScanIndexForward: false,
           ExclusiveStartKey: lastKey,
@@ -285,7 +285,7 @@ export class FeedTimelineRepository {
               Delete: {
                 TableName: TABLES.FEED_TIMELINE,
                 Key: {
-                  feedUserId,
+                  feedUserId: String(feedUserId),
                   sk,
                 },
               },
@@ -307,10 +307,10 @@ export class FeedTimelineRepository {
         Put: {
           TableName: TABLES.FEED_TIMELINE,
           Item: {
-            feedUserId: entry.feedUserId,
+            feedUserId: String(entry.feedUserId),
             sk: toTimelineSk(entry.createdAt.toISOString(), entry.postId),
-            postId: entry.postId,
-            actorUserId: entry.actorUserId,
+            postId: String(entry.postId),
+            actorUserId: String(entry.actorUserId),
             createdAt: entry.createdAt.toISOString(),
           },
         },

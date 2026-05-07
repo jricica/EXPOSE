@@ -9,6 +9,7 @@ import {
 } from '../models/message.model';
 import { UserId } from '../models/user.model';
 import { messageRepository, MessageRepository } from '../repositories/message.repository';
+import { relationshipRepository } from '../repositories/relationship.repository';
 
 const buildConversationId = (a: UserId, b: UserId): ConversationId => {
   const [first, second] = [a, b].sort((x, y) => x - y);
@@ -18,7 +19,11 @@ const buildConversationId = (a: UserId, b: UserId): ConversationId => {
 export class MessageService {
   constructor(private readonly repo: MessageRepository = messageRepository) {}
 
-  async getOrCreateDirectConversation(userA: UserId, userB: UserId): Promise<Conversation> {
+  async getOrCreateDirectConversation(
+    userA: UserId,
+    userB: UserId,
+    options?: { skipFollowValidation?: boolean },
+  ): Promise<Conversation> {
     if (!Number.isInteger(userA) || !Number.isInteger(userB) || userA <= 0 || userB <= 0) {
       throw new Error('Participantes inválidos');
     }
@@ -31,6 +36,16 @@ export class MessageService {
     const existing = await this.repo.getConversation(conversationId);
     if (existing) {
       return existing;
+    }
+
+    if (!options?.skipFollowValidation) {
+      const [aFollowsB, bFollowsA] = await Promise.all([
+        relationshipRepository.isFollowing(userA, userB),
+        relationshipRepository.isFollowing(userB, userA),
+      ]);
+      if (!aFollowsB || !bFollowsA) {
+        throw new Error('Solo puedes iniciar mensajes directos con usuarios que también te siguen');
+      }
     }
 
     const now = new Date();
@@ -75,9 +90,9 @@ export class MessageService {
     return this.repo.listConversationsByUser(userId);
   }
 
-  async sendMessageToConversation(senderId: UserId, conversationId: ConversationId, content: string): Promise<Message> {
+  async sendMessageToConversation(senderId: UserId, conversationId: ConversationId, content: string, mediaUrl?: string, mediaType?: string): Promise<Message> {
     const trimmedContent = content?.trim() ?? '';
-    if (!trimmedContent) {
+    if (!trimmedContent && !mediaUrl) {
       throw new Error('El mensaje no puede estar vacío');
     }
 
@@ -91,12 +106,17 @@ export class MessageService {
     }
 
     const receiverId = conversation.participantIds.find((id) => id !== senderId);
+    if (receiverId === undefined) {
+      throw new Error('No se encontró destinatario en la conversación');
+    }
     const message: Message = {
       conversationId,
       messageId: `${Date.now()}#${randomUUID()}`,
       senderId,
       receiverId,
       content: trimmedContent,
+      mediaUrl,
+      mediaType,
       createdAt: new Date(),
       readAt: null,
     };
@@ -107,9 +127,9 @@ export class MessageService {
     return message;
   }
 
-  async sendDirectMessage(senderId: UserId, receiverId: UserId, content: string): Promise<Message> {
+  async sendDirectMessage(senderId: UserId, receiverId: UserId, content: string, mediaUrl?: string, mediaType?: string): Promise<Message> {
     const conversation = await this.getOrCreateDirectConversation(senderId, receiverId);
-    return this.sendMessageToConversation(senderId, conversation.conversationId, content);
+    return this.sendMessageToConversation(senderId, conversation.conversationId, content, mediaUrl, mediaType);
   }
 
   async listConversationMessages(
@@ -150,12 +170,80 @@ export class MessageService {
     }
   }
 
-  async sendMessage(senderId: UserId, receiverId: UserId, content: string, conversationId?: ConversationId): Promise<Message> {
+  async sendMessage(senderId: UserId, receiverId: UserId, content: string, conversationId?: ConversationId, mediaUrl?: string, mediaType?: string): Promise<Message> {
     if (conversationId) {
-      return this.sendMessageToConversation(senderId, conversationId, content);
+      return this.sendMessageToConversation(senderId, conversationId, content, mediaUrl, mediaType);
     }
 
-    return this.sendDirectMessage(senderId, receiverId, content);
+    return this.sendDirectMessage(senderId, receiverId, content, mediaUrl, mediaType);
+  }
+
+  async editConversationMessage(
+    userId: UserId,
+    conversationId: ConversationId,
+    messageId: string,
+    content: string
+  ): Promise<Message> {
+    const nextContent = content?.trim() ?? '';
+    if (!nextContent) {
+      throw new Error('El mensaje no puede estar vacío');
+    }
+
+    const conversation = await this.repo.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error('Conversación no encontrada');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new Error('No autorizado para editar en esta conversación');
+    }
+
+    const current = await this.repo.getMessage(conversationId, messageId);
+    if (!current) {
+      throw new Error('Mensaje no encontrado');
+    }
+
+    if (current.senderId !== userId) {
+      throw new Error('Solo puedes editar tus propios mensajes');
+    }
+
+    if (current.deletedAt) {
+      throw new Error('No se puede editar un mensaje eliminado');
+    }
+
+    const maxEditableMs = 15 * 60 * 1000;
+    if (Date.now() - current.createdAt.getTime() > maxEditableMs) {
+      throw new Error('El mensaje ya no puede editarse (límite: 15 minutos)');
+    }
+
+    await this.repo.updateMessageContent(conversationId, messageId, nextContent);
+    const updated = await this.repo.getMessage(conversationId, messageId);
+    if (!updated) {
+      throw new Error('No se pudo recuperar el mensaje actualizado');
+    }
+    return updated;
+  }
+
+  async deleteConversationMessage(userId: UserId, conversationId: ConversationId, messageId: string): Promise<void> {
+    const conversation = await this.repo.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error('Conversación no encontrada');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new Error('No autorizado para eliminar en esta conversación');
+    }
+
+    const current = await this.repo.getMessage(conversationId, messageId);
+    if (!current) {
+      throw new Error('Mensaje no encontrado');
+    }
+
+    if (current.senderId !== userId) {
+      throw new Error('Solo puedes eliminar tus propios mensajes');
+    }
+
+    await this.repo.softDeleteMessage(conversationId, messageId);
   }
 
   async listMessages(requesterId: UserId, conversationId: ConversationId): Promise<Message[]> {
