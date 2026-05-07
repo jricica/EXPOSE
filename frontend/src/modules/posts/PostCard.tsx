@@ -14,6 +14,31 @@ type Props = {
 
 const PostCard: React.FC<Props> = ({ post }) => {
   const [showContent, setShowContent] = useState(!post.is_sensitive);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const handleFollow = async () => {
+    try {
+      const method = isFollowing ? "DELETE" : "POST";
+
+      const response = await fetch(`/users/${post.id}/follow`, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error following user");
+      }
+
+      setIsFollowing(!isFollowing);
+
+    } catch (error) {
+      console.error(error);
+      alert("Error siguiendo usuario");
+    }
+  };
 
   const handleReport = async () => {
     try {
@@ -39,7 +64,14 @@ const PostCard: React.FC<Props> = ({ post }) => {
 
       {/* HEADER */}
       <div className="post-header">
-        <span className="post-user">@{post.username}</span>
+        <div className="post-user-row">
+          <span className="post-user">@{post.username}</span>
+
+          <button className="follow-btn" onClick={handleFollow}>
+            {isFollowing ? "Following" : "Follow"}
+          </button>
+        </div>
+
         <span className="post-time">
           {new Date(post.created_at).toLocaleTimeString()}
         </span>

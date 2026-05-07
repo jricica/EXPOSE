@@ -20,6 +20,8 @@ model User {
   role         Int        @default(1)
   posts        Post[]
   post_likes   PostLike[]
+  followers  Follow[] @relation("UserFollowers")
+  following  Follow[] @relation("UserFollowing")
 
   @@map("users")
 }
@@ -49,4 +51,18 @@ model PostLike {
 
   @@unique([postId, userId], name: "unique_like")
   @@index([userId], map: "PostLike_userId_fkey")
+}
+
+model Follow {
+  id           Int      @id @default(autoincrement())
+
+  followerId   Int
+  followingId  Int
+
+  follower     User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@unique([followerId, followingId])
 }
