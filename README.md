@@ -3,15 +3,16 @@
 EXPOSE es una red social anónima y efímera desarrollada como proyecto full stack.  
 La aplicación permite que los usuarios publiquen contenido sin perfiles públicos, sin likes y sin screenshots, creando una experiencia enfocada en libertad de expresión y privacidad.
 
-Los posts desaparecen automáticamente después de 1 hora.
+Los posts desaparecen automáticamente después de 24 horas.
 
 ---
 
 # Integrantes
 
-- [Nombre 1]
-- [Nombre 2]
-- [Nombre 3]
+- Jan Ricica
+- Ana Sofia Eggenberger
+- Juan Pablo Madriz
+- Victor Saravia
 
 ---
 
@@ -27,53 +28,6 @@ EXPOSE busca romper con eso creando una plataforma donde:
 - Se prioriza la privacidad del usuario
 
 La idea principal es permitir que las personas publiquen pensamientos, opiniones o experiencias sin presión social.
-
----
-
-# Características Principales
-
-## Usuarios
-- Registro de usuarios
-- Inicio de sesión
-- JWT Authentication
-- Roles de usuario y administrador
-- Manejo de sesión segura
-
-## Feed
-- Publicación de posts
-- Feed dinámico
-- Posts temporales (1 hora)
-- Eliminación automática de contenido expirado
-- Comentarios
-- Reportes de contenido
-- Moderación de publicaciones
-
-## Multimedia
-- Subida de imágenes
-- Validación segura de archivos
-- Integración con Amazon S3
-- URLs firmadas (Signed URLs)
-- Almacenamiento privado
-
-## Tiempo Real
-- Actualización de feed en tiempo real
-- WebSockets
-- Eventos en vivo
-- Sincronización frontend/backend
-
-## Administración
-- Dashboard de administrador
-- Moderación de contenido
-- Gestión de reportes
-- Eliminación de publicaciones
-
-## Frontend
-- Responsive Design
-- Diseño moderno tipo glassmorphism
-- Dark Theme
-- Navegación dinámica
-- Estados de carga y error
-- Componentes reutilizables
 
 ---
 
@@ -344,6 +298,105 @@ El frontend fue diseñado con una interfaz moderna inspirada en aplicaciones soc
 
 ---
 
+# Instalación y ejecución local
+
+## Requisitos
+
+- Node.js
+- npm
+- MySQL
+- Git
+
+---
+
+## 1. Clonar repositorio
+
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd EXPOSE
+```
+
+---
+
+## 2. Instalar dependencias
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+```
+
+### Backend
+
+```bash
+cd backend
+npm install
+```
+
+---
+
+## 3. Configurar variables de entorno
+
+Crear un archivo `.env` dentro de `/backend`.
+
+Ejemplo:
+
+```env
+PORT=3000
+
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=tu_password
+DB_NAME=expose
+DB_PORT=3306
+
+JWT_SECRET=supersecret
+```
+
+---
+
+## 4. Inicializar base de datos
+
+```bash
+npm run db:init
+```
+
+---
+
+## 5. Ejecutar backend
+
+```bash
+npm run dev
+```
+
+---
+
+## 6. Ejecutar frontend
+
+En otra terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
+## 7. Abrir aplicación
+
+Frontend:
+```txt
+http://localhost:5173
+```
+
+Backend:
+```txt
+http://localhost:3000
+```
+
+---
+
 # Decisiones Técnicas Importantes
 
 ## DynamoDB
@@ -466,4 +519,4 @@ Proyecto actualmente funcional con:
 
 # Autor
 
-Proyecto desarrollado como parte del curso de Desarrollo de Software / Ingeniería de Software.
+Proyecto desarrollado como parte del curso de Desarrollo de Software / Ingeniería de Software
