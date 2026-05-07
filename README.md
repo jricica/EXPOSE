@@ -22,7 +22,6 @@ Actualmente la mayoría de redes sociales giran alrededor de seguidores, popular
 EXPOSE busca romper con eso creando una plataforma donde:
 
 - No existen perfiles públicos
-- No existen likes
 - Los posts son temporales
 - El contenido es anónimo
 - Se prioriza la privacidad del usuario
