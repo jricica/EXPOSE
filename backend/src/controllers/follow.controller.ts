@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import * as followService from '../services/follow.service';
+import { getUserId } from '../utils/auth';
 
 export const followUser = async (req: Request, res: Response) => {
   try {
-    const followerId = req.user.id;
+    const followerId = getUserId(req);
     const followingId = Number(req.params.userId);
 
     const result = await followService.follow(followerId, followingId);
@@ -16,7 +17,7 @@ export const followUser = async (req: Request, res: Response) => {
 
 export const unfollowUser = async (req: Request, res: Response) => {
   try {
-    const followerId = req.user.id;
+    const followerId = getUserId(req);
     const followingId = Number(req.params.userId);
 
     await followService.unfollow(followerId, followingId);

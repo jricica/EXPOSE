@@ -1,4 +1,4 @@
-import { get, post } from '../../../services/api';
+import { del, get, patch, post } from '../../../services/api';
 
 export type Conversation = {
   conversationId: string;
@@ -15,6 +15,8 @@ export type MessageItem = {
   receiverId?: number;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
   readAt?: string | null;
 };
 
@@ -35,19 +37,29 @@ export type PublicUser = {
 
 export const messageService = {
   async createOrGetDirectConversation(participantUserId: number): Promise<Conversation> {
-    return post<Conversation>('/conversations/direct', { participantUserId });
+    return post<Conversation>('/messages/conversations/direct', { participantUserId });
   },
 
   async listConversations(): Promise<Conversation[]> {
-    return get<Conversation[]>('/conversations');
+    return get<Conversation[]>('/messages/conversations');
   },
 
   async listConversationMessages(conversationId: string, limit = 100): Promise<ConversationMessagesResponse> {
-    return get<ConversationMessagesResponse>(`/conversations/${encodeURIComponent(conversationId)}/messages`, { limit });
+    return get<ConversationMessagesResponse>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages`, { limit });
   },
 
   async sendConversationMessage(conversationId: string, content: string): Promise<MessageItem> {
-    return post<MessageItem>(`/conversations/${encodeURIComponent(conversationId)}/messages`, { content });
+    return post<MessageItem>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages`, { content });
+  },
+
+  async editConversationMessage(conversationId: string, messageId: string, content: string): Promise<MessageItem> {
+    return patch<MessageItem>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`, {
+      content,
+    });
+  },
+
+  async deleteConversationMessage(conversationId: string, messageId: string): Promise<void> {
+    await del<void>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`);
   },
 
   async searchUsers(search: string): Promise<PublicUser[]> {
@@ -56,5 +68,9 @@ export const messageService = {
 
   async getUserById(userId: number): Promise<PublicUser> {
     return get<PublicUser>(`/users/${userId}`);
+  },
+
+  async followUser(userId: number): Promise<void> {
+    await post(`/relationships/users/${userId}/follow`);
   },
 };

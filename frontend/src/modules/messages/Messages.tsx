@@ -24,6 +24,8 @@ const Messages = () => {
   const [userResults, setUserResults] = useState<PublicUser[]>([]);
   const [userMap, setUserMap] = useState<Record<number, PublicUser>>({});
   const [sending, setSending] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
   const myUserId = user?.id;
 
   const enrichUsers = async (items: Conversation[]) => {
@@ -143,6 +145,15 @@ const Messages = () => {
     }
   };
 
+  const handleFollow = async (targetUserId: number) => {
+    try {
+      await messageService.followUser(targetUserId);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo seguir al usuario.');
+    }
+  };
+
   const handleSend = async (event: FormEvent) => {
     event.preventDefault();
     if (!selectedConversationId || !draft.trim()) return;
@@ -157,6 +168,38 @@ const Messages = () => {
       setError(err instanceof Error ? err.message : 'No se pudo enviar el mensaje.');
     } finally {
       setSending(false);
+    }
+  };
+
+  const canEditMessage = (message: MessageItem) => {
+    if (message.senderId !== myUserId) return false;
+    const diffMs = Date.now() - new Date(message.createdAt).getTime();
+    return diffMs <= 15 * 60 * 1000 && !message.deletedAt;
+  };
+
+  const handleSaveEdit = async (messageId: string) => {
+    if (!selectedConversationId || !editDraft.trim()) return;
+    try {
+      const updated = await messageService.editConversationMessage(selectedConversationId, messageId, editDraft.trim());
+      setMessages((prev) => prev.map((msg) => (msg.messageId === messageId ? updated : msg)));
+      setEditingMessageId(null);
+      setEditDraft('');
+      await loadConversations();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo editar el mensaje.');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedConversationId) return;
+    try {
+      await messageService.deleteConversationMessage(selectedConversationId, messageId);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.messageId === messageId ? { ...msg, content: '[mensaje eliminado]', deletedAt: new Date().toISOString() } : msg)),
+      );
+      await loadConversations();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el mensaje.');
     }
   };
 
@@ -181,9 +224,13 @@ const Messages = () => {
         {userResults.length > 0 ? (
           <div className="messages-user-results">
             {userResults.map((candidate) => (
-              <button key={candidate.id} onClick={() => void handleOpenDirect(candidate.id)}>
-                Abrir chat con {partnerName(candidate)}
-              </button>
+              <div key={candidate.id} className="messages-user-result-item">
+                <span>{partnerName(candidate)}</span>
+                <div>
+                  <button onClick={() => void handleFollow(candidate.id)}>Seguir</button>
+                  <button onClick={() => void handleOpenDirect(candidate.id)}>Abrir chat</button>
+                </div>
+              </div>
             ))}
           </div>
         ) : null}
@@ -226,11 +273,35 @@ const Messages = () => {
                     const mine = myUserId === message.senderId;
                     return (
                       <div key={message.messageId} className={`bubble ${mine ? 'mine' : 'theirs'}`}>
-                        <span>{message.content}</span>
+                        {editingMessageId === message.messageId ? (
+                          <div className="messages-edit-box">
+                            <input value={editDraft} onChange={(event) => setEditDraft(event.target.value)} />
+                            <button onClick={() => void handleSaveEdit(message.messageId)}>Guardar</button>
+                            <button onClick={() => { setEditingMessageId(null); setEditDraft(''); }}>Cancelar</button>
+                          </div>
+                        ) : (
+                          <span>{message.content}</span>
+                        )}
                         <small>
                           {mine ? 'Tú' : partnerName(activePartnerId ? userMap[activePartnerId] : undefined)} ·{' '}
                           {new Date(message.createdAt).toLocaleString()}
+                          {message.editedAt ? ' · editado' : ''}
                         </small>
+                        {mine && editingMessageId !== message.messageId ? (
+                          <div className="messages-actions">
+                            {canEditMessage(message) ? (
+                              <button
+                                onClick={() => {
+                                  setEditingMessageId(message.messageId);
+                                  setEditDraft(message.content);
+                                }}
+                              >
+                                Editar
+                              </button>
+                            ) : null}
+                            {!message.deletedAt ? <button onClick={() => void handleDeleteMessage(message.messageId)}>Eliminar</button> : null}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}

@@ -40,8 +40,24 @@
 
 .messages-user-results {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
+}
+
+.messages-user-result-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+  border: 1px solid #24374d;
+  border-radius: 10px;
+  background: #111925;
+  padding: 0.5rem 0.6rem;
+}
+
+.messages-user-result-item > div {
+  display: flex;
+  gap: 0.45rem;
 }
 
 .messages-grid {
@@ -113,6 +129,38 @@
 .bubble small {
   color: #adc3dc;
   font-size: 0.72rem;
+}
+
+.messages-actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.messages-actions button,
+.messages-edit-box button {
+  border: 1px solid #32587f;
+  border-radius: 8px;
+  background: #16293f;
+  color: #d8e9ff;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.messages-edit-box {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.messages-edit-box input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #25364f;
+  border-radius: 8px;
+  background: #111925;
+  color: #eef5ff;
+  padding: 0.4rem 0.5rem;
 }
 
 .messages-compose {

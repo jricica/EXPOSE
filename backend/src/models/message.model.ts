@@ -33,6 +33,8 @@ export interface Message {
   content: string;
   createdAt: Date;
   updatedAt?: Date;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
   readAt?: Date | null;
 }
 

@@ -9,6 +9,7 @@ import {
 } from '../models/message.model';
 import { UserId } from '../models/user.model';
 import { messageRepository, MessageRepository } from '../repositories/message.repository';
+import { areMutualFollowers } from '../repositories/follow.repository';
 
 const buildConversationId = (a: UserId, b: UserId): ConversationId => {
   const [first, second] = [a, b].sort((x, y) => x - y);
@@ -25,6 +26,11 @@ export class MessageService {
 
     if (userA === userB) {
       throw new Error('No se puede crear conversación directa con el mismo usuario');
+    }
+
+    const mutualFollowers = await areMutualFollowers(userA, userB);
+    if (!mutualFollowers) {
+      throw new Error('Solo puedes iniciar mensajes directos con usuarios que también te siguen');
     }
 
     const conversationId = buildConversationId(userA, userB);
@@ -156,6 +162,74 @@ export class MessageService {
     }
 
     return this.sendDirectMessage(senderId, receiverId, content);
+  }
+
+  async editConversationMessage(
+    userId: UserId,
+    conversationId: ConversationId,
+    messageId: string,
+    content: string
+  ): Promise<Message> {
+    const nextContent = content?.trim() ?? '';
+    if (!nextContent) {
+      throw new Error('El mensaje no puede estar vacío');
+    }
+
+    const conversation = await this.repo.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error('Conversación no encontrada');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new Error('No autorizado para editar en esta conversación');
+    }
+
+    const current = await this.repo.getMessage(conversationId, messageId);
+    if (!current) {
+      throw new Error('Mensaje no encontrado');
+    }
+
+    if (current.senderId !== userId) {
+      throw new Error('Solo puedes editar tus propios mensajes');
+    }
+
+    if (current.deletedAt) {
+      throw new Error('No se puede editar un mensaje eliminado');
+    }
+
+    const maxEditableMs = 15 * 60 * 1000;
+    if (Date.now() - current.createdAt.getTime() > maxEditableMs) {
+      throw new Error('El mensaje ya no puede editarse (límite: 15 minutos)');
+    }
+
+    await this.repo.updateMessageContent(conversationId, messageId, nextContent);
+    const updated = await this.repo.getMessage(conversationId, messageId);
+    if (!updated) {
+      throw new Error('No se pudo recuperar el mensaje actualizado');
+    }
+    return updated;
+  }
+
+  async deleteConversationMessage(userId: UserId, conversationId: ConversationId, messageId: string): Promise<void> {
+    const conversation = await this.repo.getConversation(conversationId);
+    if (!conversation) {
+      throw new Error('Conversación no encontrada');
+    }
+
+    if (!conversation.participantIds.includes(userId)) {
+      throw new Error('No autorizado para eliminar en esta conversación');
+    }
+
+    const current = await this.repo.getMessage(conversationId, messageId);
+    if (!current) {
+      throw new Error('Mensaje no encontrado');
+    }
+
+    if (current.senderId !== userId) {
+      throw new Error('Solo puedes eliminar tus propios mensajes');
+    }
+
+    await this.repo.softDeleteMessage(conversationId, messageId);
   }
 
   async listMessages(requesterId: UserId, conversationId: ConversationId): Promise<Message[]> {
