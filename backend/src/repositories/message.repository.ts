@@ -44,6 +44,8 @@ const toMessage = (item: any): Message => ({
   senderId: Number(item.senderId),
   receiverId: item.receiverId !== undefined ? Number(item.receiverId) : undefined,
   content: String(item.content),
+  mediaUrl: item.mediaUrl ? String(item.mediaUrl) : undefined,
+  mediaType: item.mediaType ? String(item.mediaType) : undefined,
   createdAt: parseDate(item.createdAt) ?? new Date(),
   updatedAt: parseDate(item.updatedAt),
   readAt: parseDate(item.readAt) ?? null,
@@ -57,9 +59,9 @@ export class MessageRepository {
         Item: {
           conversationId: conversation.conversationId,
           type: conversation.type,
-          participantIds: conversation.participantIds,
+          participantIds: conversation.participantIds.map(id => String(id)),
           participants: conversation.participants.map((participant) => ({
-            userId: participant.userId,
+            userId: String(participant.userId),
             joinedAt: participant.joinedAt.toISOString(),
             lastReadMessageId: participant.lastReadMessageId,
             lastReadAt: participant.lastReadAt ? participant.lastReadAt.toISOString() : null,
@@ -68,7 +70,7 @@ export class MessageRepository {
           updatedAt: conversation.updatedAt.toISOString(),
           lastMessageId: conversation.lastMessageId,
           lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
-          lastMessageSenderId: conversation.lastMessageSenderId,
+          lastMessageSenderId: conversation.lastMessageSenderId ? String(conversation.lastMessageSenderId) : null,
           lastMessagePreview: conversation.lastMessagePreview,
         },
         ConditionExpression: 'attribute_not_exists(conversationId)',
@@ -101,7 +103,7 @@ export class MessageRepository {
           TableName: TABLES.CONVERSATIONS,
           FilterExpression: 'contains(participantIds, :uid)',
           ExpressionAttributeValues: {
-            ':uid': userId,
+            ':uid': String(userId),
           },
           ExclusiveStartKey: lastKey,
         })
@@ -128,9 +130,9 @@ export class MessageRepository {
         Item: {
           conversationId: conversation.conversationId,
           type: conversation.type,
-          participantIds: conversation.participantIds,
+          participantIds: conversation.participantIds.map(id => String(id)),
           participants: conversation.participants.map((participant) => ({
-            userId: participant.userId,
+            userId: String(participant.userId),
             joinedAt: participant.joinedAt.toISOString(),
             lastReadMessageId: participant.lastReadMessageId,
             lastReadAt: participant.lastReadAt ? participant.lastReadAt.toISOString() : null,
@@ -139,7 +141,7 @@ export class MessageRepository {
           updatedAt: conversation.updatedAt.toISOString(),
           lastMessageId: conversation.lastMessageId,
           lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
-          lastMessageSenderId: conversation.lastMessageSenderId,
+          lastMessageSenderId: conversation.lastMessageSenderId ? String(conversation.lastMessageSenderId) : null,
           lastMessagePreview: conversation.lastMessagePreview,
         },
       })
@@ -153,9 +155,11 @@ export class MessageRepository {
         Item: {
           conversationId: message.conversationId,
           messageId: message.messageId,
-          senderId: message.senderId,
-          receiverId: message.receiverId,
+          senderId: String(message.senderId),
+          receiverId: message.receiverId ? String(message.receiverId) : null,
           content: message.content,
+          mediaUrl: message.mediaUrl,
+          mediaType: message.mediaType,
           createdAt: message.createdAt.toISOString(),
           updatedAt: message.updatedAt ? message.updatedAt.toISOString() : null,
           readAt: message.readAt ? message.readAt.toISOString() : null,

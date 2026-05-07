@@ -101,6 +101,37 @@ export const put = <T>(path: string, body?: unknown) =>
 export const patch = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'PATCH', body });
 
+export const postForm = async <T>(path: string, formData: FormData): Promise<T> => {
+  const url = buildUrl(path);
+  const finalHeaders: Record<string, string> = {};
+
+  if (authToken) {
+    finalHeaders.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: finalHeaders,
+    body: formData,
+  });
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const isJson = contentType.includes('application/json');
+  const payload = isJson ? await response.json().catch(() => null) : await response.text();
+
+  if (!response.ok) {
+    if (response.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+    const message = isJson && payload && typeof payload === 'object' && 'message' in (payload as any)
+      ? String((payload as any).message)
+      : response.statusText || 'Upload failed';
+    throw new HttpError(response.status, message, payload);
+  }
+
+  return payload as T;
+};
+
 export const del = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'DELETE', body });
 

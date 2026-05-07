@@ -7,6 +7,7 @@ import PrivateRoute from './shared/auth/PrivateRoute';
 import { useAuth } from './modules/auth/AuthContext';
 import UserDashboard from './modules/dashboard/UserDashboard';
 import AdminDashboard from './modules/dashboard/AdminDashboard';
+import Messages from './modules/messages/Messages';
 import NotFound from './NotFound';
 
 import { Loader2 } from 'lucide-react';
@@ -28,6 +29,7 @@ const RootRedirect = () => {
 
   return <Navigate to={isAdmin ? '/admin/dashboard' : '/user/dashboard'} replace />;
 };
+
 
 function App() {
   return (
@@ -68,6 +70,15 @@ function App() {
         element={
           <PrivateRoute>
             <Profile />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/messages"
+        element={
+          <PrivateRoute>
+            <Messages />
           </PrivateRoute>
         }
       />

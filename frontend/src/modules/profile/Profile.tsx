@@ -67,6 +67,47 @@ const Profile = () => {
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    e.target.value = "";
+
+    setUploading(true);
+    try {
+      const { url } = await profileService.uploadAvatar(file);
+      handleAvatarUrlChange(url);
+
+      // Auto-save so the avatar persists immediately without clicking "Guardar"
+      const updatedUser = await profileService.updateProfile({ avatar_url: url });
+      setUser(updatedUser);
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      const updatedUser = await profileService.updateProfile({ avatar_url: null });
+      setUser(updatedUser);
+      setAvatarPreview("");
+      setFormData((f) => ({ ...f, avatar_url: "" }));
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus("error");
+    }
+  };
+
   const isAdmin = user?.role === 0 || user?.role === "admin";
   const initials = (user?.display_name || user?.username || "?")
     .split(" ")
@@ -86,9 +127,9 @@ const Profile = () => {
         <div className="profile-card">
           <div className="profile-avatar-wrap">
             <div className="profile-avatar-ring">
-              {(avatarPreview || user?.avatar_url) ? (
+              {avatarPreview ? (
                 <img
-                  src={avatarPreview || user?.avatar_url}
+                  src={avatarPreview}
                   alt={user?.display_name || user?.username}
                   className="profile-avatar-img"
                   onError={() => setAvatarPreview("")}
@@ -203,13 +244,41 @@ const Profile = () => {
 
                   <div className="avatar-editor-input">
                     <label>Imagen temporal</label>
-                    <input
-                      type="url"
-                      value={formData.avatar_url}
-                      onChange={(e) => handleAvatarUrlChange(e.target.value)}
-                      placeholder="https://..."
-                    />
-                    <p className="field-hint">Usa una imagen que no te identifique directamente.</p>
+                    <div className="avatar-upload-row">
+                      <input
+                        type="url"
+                        value={formData.avatar_url}
+                        onChange={(e) => handleAvatarUrlChange(e.target.value)}
+                        placeholder="https://..."
+                      />
+                      <button 
+                        type="button" 
+                        className="upload-btn" 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? "..." : "Subir"}
+                      </button>
+                      {avatarPreview && (
+                        <button
+                          type="button"
+                          className="upload-btn remove-btn"
+                          onClick={handleRemoveAvatar}
+                          disabled={uploading}
+                          title="Eliminar imagen"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        style={{ display: 'none' }} 
+                        accept="image/*" 
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                    <p className="field-hint">Usa una imagen que no te identifique directamente o súbela desde tu equipo.</p>
                   </div>
                 </div>
 

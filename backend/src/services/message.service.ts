@@ -75,9 +75,9 @@ export class MessageService {
     return this.repo.listConversationsByUser(userId);
   }
 
-  async sendMessageToConversation(senderId: UserId, conversationId: ConversationId, content: string): Promise<Message> {
+  async sendMessageToConversation(senderId: UserId, conversationId: ConversationId, content: string, mediaUrl?: string, mediaType?: string): Promise<Message> {
     const trimmedContent = content?.trim() ?? '';
-    if (!trimmedContent) {
+    if (!trimmedContent && !mediaUrl) {
       throw new Error('El mensaje no puede estar vacío');
     }
 
@@ -97,6 +97,8 @@ export class MessageService {
       senderId,
       receiverId,
       content: trimmedContent,
+      mediaUrl,
+      mediaType,
       createdAt: new Date(),
       readAt: null,
     };
@@ -107,9 +109,9 @@ export class MessageService {
     return message;
   }
 
-  async sendDirectMessage(senderId: UserId, receiverId: UserId, content: string): Promise<Message> {
+  async sendDirectMessage(senderId: UserId, receiverId: UserId, content: string, mediaUrl?: string, mediaType?: string): Promise<Message> {
     const conversation = await this.getOrCreateDirectConversation(senderId, receiverId);
-    return this.sendMessageToConversation(senderId, conversation.conversationId, content);
+    return this.sendMessageToConversation(senderId, conversation.conversationId, content, mediaUrl, mediaType);
   }
 
   async listConversationMessages(
@@ -150,12 +152,12 @@ export class MessageService {
     }
   }
 
-  async sendMessage(senderId: UserId, receiverId: UserId, content: string, conversationId?: ConversationId): Promise<Message> {
+  async sendMessage(senderId: UserId, receiverId: UserId, content: string, conversationId?: ConversationId, mediaUrl?: string, mediaType?: string): Promise<Message> {
     if (conversationId) {
-      return this.sendMessageToConversation(senderId, conversationId, content);
+      return this.sendMessageToConversation(senderId, conversationId, content, mediaUrl, mediaType);
     }
 
-    return this.sendDirectMessage(senderId, receiverId, content);
+    return this.sendDirectMessage(senderId, receiverId, content, mediaUrl, mediaType);
   }
 
   async listMessages(requesterId: UserId, conversationId: ConversationId): Promise<Message[]> {

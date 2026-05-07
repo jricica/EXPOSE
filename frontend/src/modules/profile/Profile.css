@@ -402,6 +402,44 @@
   box-shadow: 0 0 0 3px rgba(255,255,255,0.035);
 }
 
+.avatar-upload-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.avatar-upload-row input {
+  flex: 1;
+}
+
+.upload-btn {
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  color: #eeeeee;
+  padding: 0 1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background: #eeeeee;
+  color: #050505;
+}
+
+.upload-btn.remove-btn {
+  border-color: rgba(220, 80, 80, 0.35);
+  color: #dc5050;
+  padding: 0 0.75rem;
+}
+
+.upload-btn.remove-btn:hover {
+  background: #dc5050;
+  color: #fff;
+}
+
 .char-count {
   font-size: 0.7rem;
   color: #666;
