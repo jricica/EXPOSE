@@ -4,7 +4,9 @@
   --bg: #020202;
   --surface: rgba(12, 12, 12, 0.82);
   --surface-soft: rgba(24, 24, 24, 0.68);
+
   --line: rgba(255, 255, 255, 0.075);
+
   --text-main: #f2f2f2;
   --text-muted: #8b8b8b;
 
@@ -13,17 +15,30 @@
   --accent-glow: rgba(255, 255, 255, 0.12);
   --accent-strong: #b8b8b8;
 
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+
   line-height: 1.6;
   font-weight: 400;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -36,32 +51,76 @@ body,
 
 body {
   min-width: 320px;
+
   color: var(--text-main);
+
   background:
-    radial-gradient(circle at 50% -20%, rgba(255, 255, 255, 0.035), transparent 28%),
+    radial-gradient(circle at top left, rgba(255,255,255,0.04), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 30%),
+    radial-gradient(circle at 50% -20%, rgba(255,255,255,0.035), transparent 28%),
     linear-gradient(180deg, #000 0%, #030303 45%, #070707 100%);
+
   background-attachment: fixed;
+
+  overflow-x: hidden;
 }
 
 body::before {
   content: "";
+
   position: fixed;
   inset: 0;
+
   pointer-events: none;
+
   background-image:
-    radial-gradient(rgba(255,255,255,0.08) 0.5px, transparent 0.5px);
-  background-size: 5px 5px;
-  opacity: 0.06;
+    radial-gradient(rgba(255,255,255,0.08) 0.5px, transparent 0.5px),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.012),
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+
+  background-size:
+    5px 5px,
+    100% 3px;
+
+  opacity: 0.08;
+
+  mix-blend-mode: soft-light;
+
+  animation: scanlinesMove 12s linear infinite;
+
   z-index: 0;
+}
+
+@keyframes scanlinesMove {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(12px);
+  }
 }
 
 body::after {
   content: "";
+
   position: fixed;
   inset: 0;
+
   pointer-events: none;
+
   background:
-    radial-gradient(circle at center, transparent 42%, rgba(0,0,0,0.58) 100%);
+    radial-gradient(
+      circle at center,
+      transparent 42%,
+      rgba(0,0,0,0.58) 100%
+    );
+
   z-index: 0;
 }
 
@@ -70,26 +129,68 @@ body::after {
   z-index: 1;
 }
 
-h1, h2, h3, h4, h5, h6 {
+/* TYPOGRAPHY */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'IBM Plex Mono', monospace;
+
   letter-spacing: -0.04em;
+
   margin-top: 0;
+
   font-weight: 700;
+}
+
+p {
+  color: var(--text-main);
 }
 
 a {
   color: inherit;
-  transition: all 0.2s ease;
+  text-decoration: none;
+
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 
-button, input, textarea {
+a:hover {
+  opacity: 0.88;
+}
+
+/* FORMS */
+
+button,
+input,
+textarea {
   font-family: inherit;
 }
 
 button {
   cursor: pointer;
-  transition: all 0.2s ease;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+input,
+textarea {
+  outline: none;
+}
+
+/* SELECTION */
 
 ::selection {
   background: rgba(255,255,255,0.18);
@@ -108,6 +209,8 @@ button {
 ::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.18);
   border-radius: 999px;
+
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
