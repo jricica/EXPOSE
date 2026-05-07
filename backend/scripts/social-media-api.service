@@ -1,0 +1,21 @@
+[Unit]
+Description=Social Media API (Node.js)
+After=network.target
+
+[Service]
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# El script setup-ec2.sh instala NVM, por lo que Node está en esta ruta. 
+# Si varía, ajusta la ruta ejecutando `which node` en tu EC2.
+ExecStart=/usr/bin/env node dist/index.js
+WorkingDirectory=/var/www/social-media/backend
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=social-media-api
+# Se recomienda usar el usuario ubuntu
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target

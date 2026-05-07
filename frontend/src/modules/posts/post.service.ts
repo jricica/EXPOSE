@@ -1,5 +1,6 @@
-import { get, put, post, del } from '../../../services/api';
-import { FeedResponse, LikeState, PostComment, PostItem } from './post.types';
+import { del, get, postForm, put } from '../../../services/api';
+import { post } from '../../../services/api';
+import { FeedResponse, LikeState, PostComment, PostCommentsResponse, PostItem } from './post.types';
 
 export type FeedCursor = {
   cursorCreatedAt: string;
@@ -44,6 +45,13 @@ export const postService = {
     return get<PaginatedComments>(`/posts/${postId}/comments`, {
       limit,
       cursorCommentId: cursor,
+  async createPost(content: string, options?: { ttlMinutes?: number; mediaUrl?: string }): Promise<PostItem> {
+    const ttlMinutes = Math.min(Math.max(options?.ttlMinutes ?? 24 * 60, 1), 24 * 60);
+
+    return post<PostItem>('/posts', {
+      content,
+      ttl: { minutes: ttlMinutes },
+      mediaUrl: options?.mediaUrl,
     });
   },
 
@@ -69,5 +77,17 @@ export const postService = {
 
   async reportPost(postId: number): Promise<void> {
     return post<void>(`/posts/${postId}/report`, {});
+  async listComments(postId: number): Promise<PostCommentsResponse> {
+    return get<PostCommentsResponse>(`/posts/${postId}/comments`, { limit: 50 });
+  },
+
+  async deletePost(postId: number): Promise<void> {
+    await del<void>(`/posts/${postId}`);
+  },
+
+  async uploadPostImage(file: File): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return postForm<{ url: string }>('/upload/profile-picture', formData);
   },
 };

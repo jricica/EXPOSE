@@ -31,6 +31,8 @@ export interface Message {
   senderId: UserId;
   receiverId?: UserId;
   content: string;
+  mediaUrl?: string;
+  mediaType?: string;
   createdAt: Date;
   updatedAt?: Date;
   editedAt?: Date | null;

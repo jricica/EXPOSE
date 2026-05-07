@@ -1,88 +1,42 @@
-import { del, get, patch, post } from '../../../services/api';
+import { get, post } from "../../../services/api";
 
-export type Conversation = {
-  conversationId: string;
-  participantIds: number[];
-  lastMessageAt?: string;
-  lastMessagePreview?: string;
-  lastMessageSenderId?: number;
-};
+export interface Message {
+    messageId: string;
+    conversationId: string;
+    senderId: number;
+    content: string;
+    mediaUrl?: string;
+    mediaType?: string;
+    createdAt: string;
+}
 
-export type MessageItem = {
-  conversationId: string;
-  messageId: string;
-  senderId: number;
-  receiverId?: number;
-  content: string;
-  createdAt: string;
-  editedAt?: string | null;
-  deletedAt?: string | null;
-  readAt?: string | null;
-};
+export interface PostReference {
+    postId: number;
+    preview?: string;
+}
 
-export type ConversationMessagesResponse = {
-  messages: MessageItem[];
-  pagination: {
-    limit: number;
-    nextCursorMessageId: string | null;
-  };
-};
-
-export type PublicUser = {
-  id: number;
-  username: string;
-  display_name?: string;
-  avatar_url?: string;
-};
+export interface Conversation {
+    conversationId: string;
+    participantIds: number[];
+    lastMessagePreview?: string;
+    lastMessageAt?: string;
+    updatedAt: string;
+}
 
 export const messageService = {
-  async createOrGetDirectConversation(participantUserId: number): Promise<Conversation> {
-    return post<Conversation>('/messages/conversations/direct', { participantUserId });
-  },
+    async listConversations() {
+        return await get<Conversation[]>("/messages/conversations");
+    },
 
-  async listConversations(): Promise<Conversation[]> {
-    return get<Conversation[]>('/messages/conversations');
-  },
+    async getConversationMessages(conversationId: string) {
+        return await get<{ messages: Message[] }>(`/messages/conversations/${conversationId}/messages`);
+    },
 
-  async listConversationMessages(conversationId: string, limit = 100): Promise<ConversationMessagesResponse> {
-    return get<ConversationMessagesResponse>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages`, { limit });
-  },
+    async sendMessage(conversationId: string, content: string, mediaUrl?: string, postReference?: PostReference) {
+        return await post<Message>(`/messages/conversations/${conversationId}/messages`, { content, mediaUrl, postReference });
+    },
 
-  async sendConversationMessage(conversationId: string, content: string): Promise<MessageItem> {
-    return post<MessageItem>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages`, { content });
-  },
-
-  async editConversationMessage(conversationId: string, messageId: string, content: string): Promise<MessageItem> {
-    return patch<MessageItem>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`, {
-      content,
-    });
-  },
-
-  async deleteConversationMessage(conversationId: string, messageId: string): Promise<void> {
-    await del<void>(`/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`);
-  },
-
-  async searchUsers(search: string): Promise<PublicUser[]> {
-    return get<PublicUser[]>('/users', { search });
-  },
-
-  async getUserById(userId: number): Promise<PublicUser> {
-    return get<PublicUser>(`/users/${userId}`);
-  },
-
-  async followUser(userId: number): Promise<void> {
-    await post(`/relationships/users/${userId}/follow`);
-  },
-
-  async unfollowUser(userId: number): Promise<void> {
-    await del(`/relationships/users/${userId}/follow`);
-  },
-
-  async listFollowers(userId: number): Promise<PublicUser[]> {
-    return get<PublicUser[]>(`/relationships/users/${userId}/followers`);
-  },
-
-  async listFollowing(userId: number): Promise<PublicUser[]> {
-    return get<PublicUser[]>(`/relationships/users/${userId}/following`);
-  },
+    async createDirectConversation(participantUserId: number) {
+        return await post<Conversation>("/messages/conversations/direct", { participantUserId });
+    }
 };

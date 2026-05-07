@@ -19,11 +19,11 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="layout-container">
       <div className="floating-nav-wrapper">
         <nav className="floating-nav">
-          <div className="nav-brand" onClick={() => navigate(mainPath)}>
+          <button className="nav-brand" onClick={() => navigate(mainPath)}>
             EXPOSE
-          </div>
-          
-          <div className="nav-divider"></div>
+          </button>
+
+          <span className="nav-status">24H CHANNEL</span>
 
           <NavLink to={mainPath} className={`nav-link ${location.pathname === mainPath ? 'active' : ''}`}>
             <Home size={18} /> <span className="nav-text">Inicio</span>
@@ -45,30 +45,34 @@ const Layout = ({ children }: LayoutProps) => {
             <NavLink to="/admin/dashboard" className={`nav-link ${location.pathname === '/admin/dashboard' ? 'active' : ''}`}>
               <Shield size={18} /> <span className="nav-text">Admin</span>
             </NavLink>
-          )}
+
+            {isAdmin && (
+              <NavLink
+                to="/admin/dashboard"
+                className={`nav-link ${location.pathname === "/admin/dashboard" ? "active" : ""}`}
+              >
+                <Shield size={16} />
+                <span className="nav-text">Admin</span>
+              </NavLink>
+            )}
+          </div>
 
           {isAuthenticated ? (
-            <>
-              <div className="nav-divider"></div>
-              <div className="nav-user">
-                <span className="nav-username">{user?.display_name || user?.username || "Usuario"}</span>
-                <button className="nav-logout" onClick={() => logout()} title="Cerrar sesión">
-                  <LogOut size={16} />
-                </button>
-              </div>
-            </>
+            <div className="nav-user">
+              <span className="nav-username">{user?.display_name || user?.username || "ANON"}</span>
+              <button className="nav-logout" onClick={() => logout()} title="Cerrar sesión">
+                <LogOut size={15} />
+              </button>
+            </div>
           ) : (
-            <>
-              <div className="nav-divider"></div>
-              <NavLink to="/login" className="nav-link active">Login</NavLink>
-            </>
+            <NavLink to="/login" className="nav-login">
+              Acceso
+            </NavLink>
           )}
         </nav>
       </div>
 
-      <main className="layout-main">
-        {children}
-      </main>
+      <main className="layout-main">{children}</main>
     </div>
   );
 };

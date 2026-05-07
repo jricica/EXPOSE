@@ -45,3 +45,11 @@ export type PostComment = {
   moderationStatus?: 'active' | 'hidden';
   reportsCount?: number;
 };
+
+export type PostCommentsResponse = {
+  comments: PostComment[];
+  pagination: {
+    limit: number;
+    nextCursorCommentId: string | null;
+  };
+};

@@ -18,10 +18,12 @@ export interface Post {
   reportsCount?: number;
   likedByMe?: boolean;
   is_deleted?: boolean;
+  is_sensitive?: boolean; 
 }
 
 // Schema note (pending DB migration):
 // ALTER TABLE posts ADD COLUMN is_deleted TINYINT(1) NOT NULL DEFAULT 0;
+// ALTER TABLE posts ADD COLUMN is_sensitive TINYINT(1) NOT NULL DEFAULT 0;
 
 export interface LikeRecord {
   id: number;
@@ -41,6 +43,7 @@ export interface Comment {
   reportsCount: number;
   moderatedAt?: Date;
   moderationReason?: string;
+  is_sensitive?: boolean; 
 }
 
 export interface CommentListQuery {

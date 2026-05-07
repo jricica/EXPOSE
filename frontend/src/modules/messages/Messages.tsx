@@ -1,328 +1,262 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Layout from '../../components/Layout';
 import { useAuth } from '../auth/AuthContext';
-import {
-  messageService,
-  type Conversation,
-  type MessageItem,
-  type PublicUser,
-} from './message.service';
+import { messageService, type Conversation, type Message } from './message.service';
+import { profileService } from '../profile/profile.service';
+import { motion } from 'framer-motion';
+import { Send, Paperclip, Search, MoreVertical, Trash2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import './Messages.css';
 
-const partnerName = (user?: PublicUser) => user?.display_name || user?.username || `Usuario #${user?.id ?? '?'}`;
+type MessageNavigationState = {
+  conversationId?: string;
+  prefill?: string;
+  postReference?: {
+    postId: number;
+    preview?: string;
+  };
+};
 
 const Messages = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const routeState = (location.state || {}) as MessageNavigationState;
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [search, setSearch] = useState('');
-  const [userResults, setUserResults] = useState<PublicUser[]>([]);
-  const [userMap, setUserMap] = useState<Record<number, PublicUser>>({});
+  const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState('');
-  const myUserId = user?.id;
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const enrichUsers = async (items: Conversation[]) => {
-    if (!myUserId) return;
-    const partnerIds = Array.from(
-      new Set(
-        items
-          .map((conv) => conv.participantIds.find((id) => id !== myUserId))
-          .filter((id): id is number => Boolean(id)),
-      ),
-    );
+  useEffect(() => {
+    loadConversations();
+  }, []);
 
-    if (partnerIds.length === 0) return;
-
-    const loaded = await Promise.all(
-      partnerIds.map(async (id) => {
-        try {
-          return await messageService.getUserById(id);
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    const nextMap: Record<number, PublicUser> = {};
-    for (const item of loaded) {
-      if (item) nextMap[item.id] = item;
+  useEffect(() => {
+    if (routeState.conversationId) {
+      setSelectedConvId(routeState.conversationId);
     }
-    if (Object.keys(nextMap).length > 0) {
-      setUserMap((prev) => ({ ...prev, ...nextMap }));
+
+    if (routeState.prefill) {
+      setNewMessage(routeState.prefill);
     }
-  };
+  }, [routeState.conversationId, routeState.prefill]);
+
+  useEffect(() => {
+    if (selectedConvId) {
+      loadMessages(selectedConvId);
+    }
+  }, [selectedConvId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const loadConversations = async () => {
     try {
-      setLoadingConversations(true);
-      setError(null);
-      const items = await messageService.listConversations();
-      setConversations(items);
-      if (items.length > 0 && !selectedConversationId) {
-        setSelectedConversationId(items[0].conversationId);
-      }
-      await enrichUsers(items);
+      setLoading(true);
+      const data = await messageService.listConversations();
+      setConversations(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar las conversaciones.');
+      console.error('Error loading conversations', err);
     } finally {
-      setLoadingConversations(false);
+      setLoading(false);
     }
   };
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = async (convId: string) => {
     try {
       setLoadingMessages(true);
-      setError(null);
-      const response = await messageService.listConversationMessages(conversationId, 100);
-      setMessages((response.messages || []).slice().reverse());
+      const data = await messageService.getConversationMessages(convId);
+      setMessages(data.messages.reverse()); // Assume API returns newest first
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los mensajes.');
+      console.error('Error loading messages', err);
     } finally {
       setLoadingMessages(false);
     }
   };
 
-  useEffect(() => {
-    void loadConversations();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedConversationId) {
-      setMessages([]);
-      return;
-    }
-    void loadMessages(selectedConversationId);
-  }, [selectedConversationId]);
-
-  const activeConversation = useMemo(
-    () => conversations.find((conv) => conv.conversationId === selectedConversationId) || null,
-    [conversations, selectedConversationId],
-  );
-
-  const activePartnerId = useMemo(() => {
-    if (!activeConversation || !myUserId) return undefined;
-    return activeConversation.participantIds.find((id) => id !== myUserId);
-  }, [activeConversation, myUserId]);
-
-  const handleUserSearch = async () => {
-    const term = search.trim();
-    if (!term) {
-      setUserResults([]);
-      return;
-    }
-    try {
-      const results = await messageService.searchUsers(term);
-      const filtered = results.filter((candidate) => candidate.id !== myUserId);
-      setUserResults(filtered);
-      setUserMap((prev) => {
-        const merged = { ...prev };
-        filtered.forEach((item) => {
-          merged[item.id] = item;
-        });
-        return merged;
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo buscar usuarios.');
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
     }
   };
 
-  const handleOpenDirect = async (targetUserId: number) => {
-    try {
-      const conversation = await messageService.createOrGetDirectConversation(targetUserId);
-      setUserResults([]);
-      setSearch('');
-      await loadConversations();
-      setSelectedConversationId(conversation.conversationId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo abrir el chat directo.');
-    }
-  };
-
-  const handleFollow = async (targetUserId: number) => {
-    try {
-      await messageService.followUser(targetUserId);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo seguir al usuario.');
-    }
-  };
-
-  const handleSend = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selectedConversationId || !draft.trim()) return;
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!selectedConvId || (!newMessage.trim() && !selectedFile)) return;
 
     try {
       setSending(true);
-      const sent = await messageService.sendConversationMessage(selectedConversationId, draft.trim());
-      setDraft('');
-      setMessages((prev) => [...prev, sent]);
-      await loadConversations();
+      let mediaUrl: string | undefined;
+      
+      if (selectedFile) {
+        // Reuse profile avatar upload for now or create a dedicated one
+        const { url } = await profileService.uploadAvatar(selectedFile);
+        mediaUrl = url;
+      }
+
+      const msg = await messageService.sendMessage(selectedConvId, newMessage, mediaUrl, routeState.postReference);
+      setMessages((prev) => [...prev, msg]);
+      setNewMessage('');
+      setSelectedFile(null);
+      
+      // Update preview in conversations list
+      setConversations(prev => prev.map(c => 
+        c.conversationId === selectedConvId 
+        ? { ...c, lastMessagePreview: mediaUrl ? '📷 Archivo' : newMessage, updatedAt: new Date().toISOString() } 
+        : c
+      ));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo enviar el mensaje.');
+      console.error('Error sending message', err);
     } finally {
       setSending(false);
     }
   };
 
-  const canEditMessage = (message: MessageItem) => {
-    if (message.senderId !== myUserId) return false;
-    const diffMs = Date.now() - new Date(message.createdAt).getTime();
-    return diffMs <= 15 * 60 * 1000 && !message.deletedAt;
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSaveEdit = async (messageId: string) => {
-    if (!selectedConversationId || !editDraft.trim()) return;
-    try {
-      const updated = await messageService.editConversationMessage(selectedConversationId, messageId, editDraft.trim());
-      setMessages((prev) => prev.map((msg) => (msg.messageId === messageId ? updated : msg)));
-      setEditingMessageId(null);
-      setEditDraft('');
-      await loadConversations();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo editar el mensaje.');
-    }
-  };
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!selectedConversationId) return;
-    try {
-      await messageService.deleteConversationMessage(selectedConversationId, messageId);
-      setMessages((prev) =>
-        prev.map((msg) => (msg.messageId === messageId ? { ...msg, content: '[mensaje eliminado]', deletedAt: new Date().toISOString() } : msg)),
-      );
-      await loadConversations();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar el mensaje.');
-    }
-  };
+  // const activeConversation = conversations.find(c => c.conversationId === selectedConvId);
 
   return (
     <Layout>
-      <section className="messages-shell">
-        <div className="messages-header">
-          <h2>Mensajes directos</h2>
-          <p>Inicia conversaciones y revisa tus chats privados.</p>
-        </div>
-
-        <div className="messages-start-box">
-          <input
-            type="text"
-            placeholder="Buscar usuario por nombre"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <button onClick={() => void handleUserSearch()}>Buscar</button>
-        </div>
-
-        {userResults.length > 0 ? (
-          <div className="messages-user-results">
-            {userResults.map((candidate) => (
-              <div key={candidate.id} className="messages-user-result-item">
-                <span>{partnerName(candidate)}</span>
-                <div>
-                  <button onClick={() => void handleFollow(candidate.id)}>Seguir</button>
-                  <button onClick={() => void handleOpenDirect(candidate.id)}>Abrir chat</button>
-                </div>
-              </div>
-            ))}
+      <div className="messages-shell">
+        <aside className="convos-sidebar">
+          <div className="sidebar-header">
+            <h2>Mensajes</h2>
+            <div className="search-bar">
+              <Search size={14} />
+              <input type="text" placeholder="Buscar rastros..." />
+            </div>
           </div>
-        ) : null}
-
-        {error ? <p className="messages-error">{error}</p> : null}
-
-        <div className="messages-grid">
-          <aside className="messages-list">
-            {loadingConversations ? <p>Cargando conversaciones...</p> : null}
-            {!loadingConversations && conversations.length === 0 ? <p>Aún no tienes conversaciones.</p> : null}
-            {conversations.map((conversation) => {
-              const partnerId = myUserId
-                ? conversation.participantIds.find((id) => id !== myUserId)
-                : undefined;
-              const partner = partnerId ? userMap[partnerId] : undefined;
-              return (
-                <button
-                  key={conversation.conversationId}
-                  className={conversation.conversationId === selectedConversationId ? 'active' : ''}
-                  onClick={() => setSelectedConversationId(conversation.conversationId)}
+          
+          <div className="convos-list">
+            {loading ? (
+              <div className="convos-loading">Buscando señales...</div>
+            ) : conversations.length === 0 ? (
+              <div className="convos-empty">No hay conversaciones activas.</div>
+            ) : (
+              conversations.map((conv) => (
+                <motion.div
+                  key={conv.conversationId}
+                  className={`convo-item ${selectedConvId === conv.conversationId ? 'active' : ''}`}
+                  onClick={() => setSelectedConvId(conv.conversationId)}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <strong>{partnerName(partner)}</strong>
-                  <span>{conversation.lastMessagePreview || 'Sin mensajes aún'}</span>
-                </button>
-              );
-            })}
-          </aside>
-
-          <div className="messages-chat">
-            {!selectedConversationId ? <p>Selecciona una conversación para ver mensajes.</p> : null}
-            {selectedConversationId && loadingMessages ? <p>Cargando mensajes...</p> : null}
-            {selectedConversationId && !loadingMessages && messages.length === 0 ? (
-              <p>Envía el primer mensaje de esta conversación.</p>
-            ) : null}
-
-            {selectedConversationId ? (
-              <>
-                <div className="messages-thread">
-                  {messages.map((message) => {
-                    const mine = myUserId === message.senderId;
-                    return (
-                      <div key={message.messageId} className={`bubble ${mine ? 'mine' : 'theirs'}`}>
-                        {editingMessageId === message.messageId ? (
-                          <div className="messages-edit-box">
-                            <input value={editDraft} onChange={(event) => setEditDraft(event.target.value)} />
-                            <button onClick={() => void handleSaveEdit(message.messageId)}>Guardar</button>
-                            <button onClick={() => { setEditingMessageId(null); setEditDraft(''); }}>Cancelar</button>
-                          </div>
-                        ) : (
-                          <span>{message.content}</span>
-                        )}
-                        <small>
-                          {mine ? 'Tú' : partnerName(activePartnerId ? userMap[activePartnerId] : undefined)} ·{' '}
-                          {new Date(message.createdAt).toLocaleString()}
-                          {message.editedAt ? ' · editado' : ''}
-                        </small>
-                        {mine && editingMessageId !== message.messageId ? (
-                          <div className="messages-actions">
-                            {canEditMessage(message) ? (
-                              <button
-                                onClick={() => {
-                                  setEditingMessageId(message.messageId);
-                                  setEditDraft(message.content);
-                                }}
-                              >
-                                Editar
-                              </button>
-                            ) : null}
-                            {!message.deletedAt ? <button onClick={() => void handleDeleteMessage(message.messageId)}>Eliminar</button> : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <form className="messages-compose" onSubmit={handleSend}>
-                  <input
-                    type="text"
-                    placeholder="Escribe un mensaje..."
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                  />
-                  <button type="submit" disabled={sending || !draft.trim()}>
-                    {sending ? 'Enviando...' : 'Enviar'}
-                  </button>
-                </form>
-              </>
-            ) : null}
+                  <div className="convo-avatar">∅</div>
+                  <div className="convo-info">
+                    <div className="convo-top">
+                      <span className="convo-name">Anon #{conv.conversationId.split('#')[0].slice(-4)}</span>
+                      <span className="convo-time">
+                        {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="convo-preview">{conv.lastMessagePreview || 'Sin mensajes todavía'}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
-        </div>
-      </section>
+        </aside>
+
+        <main className="chat-area">
+          {selectedConvId ? (
+            <>
+              <header className="chat-header">
+                <div className="chat-user-info">
+                  <div className="chat-avatar">∅</div>
+                  <div>
+                    <h3>Anónimo</h3>
+                    <span>24H de rastro activo</span>
+                  </div>
+                </div>
+                <div className="chat-actions">
+                  <button><Trash2 size={18} /></button>
+                  <button><MoreVertical size={18} /></button>
+                </div>
+              </header>
+
+              <div className="chat-messages">
+                {loadingMessages ? (
+                  <div className="messages-loading">Recuperando transmisión...</div>
+                ) : (
+                  messages.map((msg) => {
+                    const isMine = msg.senderId === user?.id;
+                    return (
+                      <motion.div
+                        key={msg.messageId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`message-row ${isMine ? 'mine' : 'theirs'}`}
+                      >
+                        <div className="message-bubble">
+                          {msg.mediaUrl && (
+                            <div className="message-media">
+                              <img src={msg.mediaUrl} alt="attachment" />
+                            </div>
+                          )}
+                          {msg.content && <p>{msg.content}</p>}
+                          <span className="message-time">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <form className="chat-input-area" onSubmit={handleSend}>
+                <div className="input-wrapper-inner">
+                  {selectedFile && (
+                    <div className="selected-file-tag">
+                      <span>{selectedFile.name}</span>
+                      <button type="button" onClick={() => setSelectedFile(null)}>×</button>
+                    </div>
+                  )}
+                  <div className="input-row-inner">
+                    <button type="button" className="attach-btn" onClick={() => fileInputRef.current?.click()}>
+                      <Paperclip size={20} />
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      style={{ display: 'none' }} 
+                      onChange={handleFileSelect} 
+                      accept="image/*"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Escribe un mensaje efímero..." 
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      disabled={sending}
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="send-btn" disabled={sending || (!newMessage.trim() && !selectedFile)}>
+                  <Send size={20} />
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="chat-placeholder">
+              <div className="placeholder-icon">∅</div>
+              <h2>Selecciona una transmisión</h2>
+              <p>Los mensajes privados en EXPOSE son temporales y cifrados. No dejes rastros permanentes.</p>
+            </div>
+          )}
+        </main>
+      </div>
     </Layout>
   );
 };

@@ -1,8 +1,7 @@
 import {
   PutObjectCommand,
-  GetObjectCommand,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'; // still used by generateUploadUrl
 import { s3Client, S3_BUCKET_NAME } from '../config/aws';
 import crypto from 'crypto';
 import * as Sentry from '@sentry/node';
@@ -88,13 +87,9 @@ export class StorageService {
     if (process.env.CDN_BASE_URL) {
       return `${process.env.CDN_BASE_URL}/${key}`;
     }
-  
-    const command = new GetObjectCommand({
-      Bucket: S3_BUCKET_NAME,
-      Key: key,
-    });
-  
-    return getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+    const region = process.env.AWS_REGION || 'us-east-1';
+    return `https://${S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
   }
 }
 

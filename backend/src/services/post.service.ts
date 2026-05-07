@@ -13,6 +13,8 @@ import {
 	now,
 } from '../utils/date';
 
+import { containsSensitiveContent } from '../utils/contentFilter';
+
 const DEFAULT_POST_TTL_HOURS = 24;
 const COMMENT_MAX_LENGTH = 500;
 const COMMENT_MIN_LENGTH = 1;
@@ -72,12 +74,15 @@ export class PostService {
 		const createdAt = this.clock();
 		const expiresAt = this.resolveExpiration(createdAt, input.ttl);
 
+		const isSensitive = containsSensitiveContent(input.content);
+
 		const id = await this.repository.create({
 			userId: input.userId,
 			content: input.content,
 			media_url: input.mediaUrl,
 			createdAt,
 			expiresAt,
+			is_sensitive: isSensitive, 
 		});
 
 		const post = await this.repository.findById(id);
@@ -227,6 +232,7 @@ export class PostService {
 
 	async addComment(postId: PostId, userId: UserId, content: string): Promise<Comment> {
 		const sanitizedContent = content?.trim() ?? '';
+
 		if (sanitizedContent.length < COMMENT_MIN_LENGTH) {
 			throw new Error('El comentario no puede estar vacío');
 		}
@@ -235,9 +241,13 @@ export class PostService {
 			throw new Error(`El comentario no puede superar ${COMMENT_MAX_LENGTH} caracteres`);
 		}
 
+		// 🔥 MODERACIÓN EN COMMENTS
+		const isSensitive = containsSensitiveContent(sanitizedContent);
+
 		const post = await this.repository.findById(postId);
 		if (!post) throw new Error('Post no encontrado');
-		return this.repository.addComment(postId, userId, sanitizedContent);
+
+		return this.repository.addComment(postId, userId, sanitizedContent, isSensitive);
 	}
 
 	async listComments(postId: PostId, query: Partial<CommentListQuery> = {}): Promise<PaginatedComments> {
@@ -304,6 +314,9 @@ export class PostService {
 		}
 
 		const repostContent = (content?.trim() ?? '') || originalPost.content;
+
+		const isSensitive = containsSensitiveContent(repostContent);
+
 		const rootPostId = originalPost.rootPostId ?? originalPost.id;
 
 		const result = await this.repository.createRepost({
@@ -313,6 +326,7 @@ export class PostService {
 			content: repostContent,
 			expiresAt: originalPost.expiresAt,
 			rootPostId,
+			is_sensitive: isSensitive, 
 		});
 
 		const repost = await this.repository.findById(result.repostPostId);
@@ -334,10 +348,10 @@ export class PostService {
 	}
 
 	async getPostById(id: PostId, currentUserId?: UserId): Promise<Post> {
-  		const post = await this.repository.findById(id, currentUserId);
-  		if (!post) throw new Error("Post not found");
+		const post = await this.repository.findById(id, currentUserId);
+		if (!post) throw new Error("Post not found");
 
-  		return post;
+		return post;
 	}
 
 	async deletePost(id: PostId, actorUserId: UserId): Promise<void> {

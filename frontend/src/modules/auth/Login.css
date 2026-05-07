@@ -5,85 +5,113 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,0.025), transparent 28%),
+    linear-gradient(180deg, #000 0%, #030303 55%, #000 100%);
 }
 
 .login-card {
-  width: min(100%, 420px);
-  border: 1px solid #2e4260;
-  border-radius: 20px;
-  padding: 1.5rem;
+  width: min(100%, 430px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 3px;
+  padding: 1.55rem;
   background:
-    radial-gradient(circle at 90% 0%, rgba(123, 182, 239, 0.2), transparent 36%),
-    #0f1622;
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+    linear-gradient(180deg, rgba(14,14,14,0.96), rgba(4,4,4,0.98));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.78);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: "NO PROFILE / 24H / NO TRACE";
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: rgba(255,255,255,0.13);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
 }
 
 .login-title {
-  margin-bottom: 0.4rem;
-  font-size: clamp(2rem, 7vw, 2.5rem);
-  letter-spacing: 0.14em;
+  margin: 1.6rem 0 0.45rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(2rem, 7vw, 2.55rem);
+  letter-spacing: 0.18em;
+  color: #f2f2f2;
 }
 
 .login-subtitle {
   margin: 0;
-  color: var(--text-muted);
+  color: #8a8a8a;
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .login-divider {
   width: 56px;
-  height: 2px;
-  background: linear-gradient(90deg, #3e83c8, #77b8f3);
-  margin: 1rem 0 1.4rem;
+  height: 1px;
+  background: rgba(255,255,255,0.28);
+  margin: 1.1rem 0 1.35rem;
 }
 
 .login-form {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.85rem;
 }
 
 .login-input {
   width: 100%;
-  border: 1px solid #29415f;
-  border-radius: 11px;
-  padding: 0.75rem 0.9rem;
-  color: #ebf5ff;
-  background: #101a28;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px;
+  padding: 0.78rem 0.85rem;
+  color: #eeeeee;
+  background: rgba(0,0,0,0.35);
+  font-size: 0.9rem;
 }
 
 .login-input::placeholder {
-  color: #7292b8;
+  color: rgba(255,255,255,0.35);
 }
 
 .login-input:focus {
   outline: none;
-  border-color: #4f8dc9;
-  box-shadow: 0 0 0 2px rgba(79, 141, 201, 0.2);
+  border-color: rgba(255,255,255,0.22);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.035);
 }
 
 .login-button {
-  border: none;
-  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2px;
   margin-top: 0.3rem;
   padding: 0.78rem 1rem;
-  color: #eff7ff;
-  font-weight: 700;
-  background: linear-gradient(140deg, #2f6ba7, #3f89cd);
-  transition: transform 0.16s ease;
+  color: #050505;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #eeeeee;
 }
 
-.login-button:hover {
+.login-button:hover:not(:disabled) {
   transform: translateY(-1px);
+  background: #ffffff;
 }
 
 .login-button:disabled {
-  opacity: 0.65;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .login-error {
   margin: 0;
-  color: #ff8b8b;
-  font-size: 0.85rem;
+  color: #d0d0d0;
+  font-size: 0.82rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  padding: 0.65rem 0.75rem;
+  border-radius: 2px;
 }
 
 .login-footer {
@@ -91,24 +119,30 @@
 }
 
 .login-link {
-  color: #a8d2ff;
+  color: #d8d8d8;
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
 }
 
 .login-link:hover {
-  color: #d8ebff;
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .login-info {
-  margin-top: 1.2rem;
-  border-top: 1px solid #263850;
-  padding-top: 0.8rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.075);
+  padding-top: 0.85rem;
   font-size: 0.74rem;
-  color: var(--text-muted);
+  color: #777;
 }
 
-/* ── Password requirements ── */
+.login-info p {
+  margin: 0.3rem 0;
+}
+
+/* Password requirements */
 .pwd-field-wrap {
   display: flex;
   flex-direction: column;
@@ -118,28 +152,44 @@
 .pwd-rules {
   list-style: none;
   margin: 0;
-  padding: 0.65rem 0.85rem;
-  background: #0a1520;
-  border: 1px solid #1e3250;
-  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 2px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.3rem 0.5rem;
+  gap: 0.35rem 0.65rem;
 }
 
 .pwd-rules li {
-  font-size: 0.78rem;
+  font-size: 0.73rem;
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  transition: color 0.18s;
+  color: #777;
 }
 
 .rule-icon {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   width: 14px;
   text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
-.rule-ok   { color: #5ec88a; }
-.rule-fail { color: #5a7a9a; }
+.rule-ok {
+  color: #d8d8d8;
+}
+
+.rule-fail {
+  color: #5f5f5f;
+}
+
+@media (max-width: 520px) {
+  .login-card {
+    padding: 1.25rem;
+  }
+
+  .pwd-rules {
+    grid-template-columns: 1fr;
+  }
+}

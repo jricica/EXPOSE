@@ -1,21 +1,23 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, INDEXES, TABLES } from '../config/dynamo';
+import { ddbDocClient, INDEXES, TABLES, relationshipKey, DYNAMO_PREFIXES } from '../config/dynamo';
 import { RelationshipType, UserId, UserRelationship } from '../models/user.model';
 
 export class RelationshipRepository {
   async follow(userId: UserId, targetUserId: UserId, relationshipType: RelationshipType = 'follow'): Promise<UserRelationship> {
     const createdAt = new Date();
 
+    const keys = relationshipKey(userId, targetUserId, relationshipType.toUpperCase() as any);
     await ddbDocClient.send(
       new PutCommand({
         TableName: TABLES.RELATIONSHIPS,
         Item: {
+          ...keys,
           userId,
           targetUserId,
           relationshipType,
           createdAt: createdAt.toISOString(),
         },
-        ConditionExpression: 'attribute_not_exists(userId) AND attribute_not_exists(targetUserId)',
+        ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
       })
     );
 
@@ -23,19 +25,21 @@ export class RelationshipRepository {
   }
 
   async unfollow(userId: UserId, targetUserId: UserId): Promise<void> {
+    const keys = relationshipKey(userId, targetUserId, 'FOLLOW' as any); // Default to follow for deletion if not specified
     await ddbDocClient.send(
       new DeleteCommand({
         TableName: TABLES.RELATIONSHIPS,
-        Key: { userId, targetUserId },
+        Key: { pk: keys.pk, sk: keys.sk },
       })
     );
   }
 
   async isFollowing(userId: UserId, targetUserId: UserId): Promise<boolean> {
+    const keys = relationshipKey(userId, targetUserId, 'FOLLOW' as any);
     const res = await ddbDocClient.send(
       new GetCommand({
         TableName: TABLES.RELATIONSHIPS,
-        Key: { userId, targetUserId },
+        Key: { pk: keys.pk, sk: keys.sk },
       })
     );
     return Boolean(res.Item);
@@ -45,11 +49,14 @@ export class RelationshipRepository {
     const items: any[] = [];
     let lastKey: any;
     do {
-      const res = await ddbDocClient.send(
+        const res = await ddbDocClient.send(
         new QueryCommand({
           TableName: TABLES.RELATIONSHIPS,
-          KeyConditionExpression: 'userId = :uid',
-          ExpressionAttributeValues: { ':uid': userId },
+          KeyConditionExpression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+          ExpressionAttributeValues: { 
+            ':pk': `${DYNAMO_PREFIXES.user}#${userId}`,
+            ':sk_prefix': `${DYNAMO_PREFIXES.relationship}#`
+          },
           ExclusiveStartKey: lastKey,
         })
       );
@@ -76,8 +83,8 @@ export class RelationshipRepository {
           new QueryCommand({
             TableName: TABLES.RELATIONSHIPS,
             IndexName: indexName,
-            KeyConditionExpression: 'targetUserId = :tid',
-            ExpressionAttributeValues: { ':tid': targetUserId },
+            KeyConditionExpression: 'gsi1pk = :tid',
+            ExpressionAttributeValues: { ':tid': `${DYNAMO_PREFIXES.user}#${targetUserId}` },
             ExclusiveStartKey: lastKey,
           })
         );
@@ -91,8 +98,8 @@ export class RelationshipRepository {
         const res = await ddbDocClient.send(
           new ScanCommand({
             TableName: TABLES.RELATIONSHIPS,
-            FilterExpression: 'targetUserId = :tid',
-            ExpressionAttributeValues: { ':tid': targetUserId },
+            FilterExpression: 'targetUserId = :tid OR gsi1pk = :tid',
+            ExpressionAttributeValues: { ':tid': `${DYNAMO_PREFIXES.user}#${targetUserId}` },
             ExclusiveStartKey: scanKey,
           })
         );
