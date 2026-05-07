@@ -152,7 +152,7 @@ async function seed() {
 
     await prisma.postLike.upsert({
       where: {
-        postId_userId: {
+        unique_like: {
           postId: post.id,
           userId: user.id,
         },
