@@ -48,6 +48,8 @@ const toMessage = (item: any): Message => ({
   mediaType: item.mediaType ? String(item.mediaType) : undefined,
   createdAt: parseDate(item.createdAt) ?? new Date(),
   updatedAt: parseDate(item.updatedAt),
+  editedAt: parseDate(item.editedAt) ?? null,
+  deletedAt: parseDate(item.deletedAt) ?? null,
   readAt: parseDate(item.readAt) ?? null,
 });
 
@@ -162,6 +164,8 @@ export class MessageRepository {
           mediaType: message.mediaType,
           createdAt: message.createdAt.toISOString(),
           updatedAt: message.updatedAt ? message.updatedAt.toISOString() : null,
+          editedAt: message.editedAt ? message.editedAt.toISOString() : null,
+          deletedAt: message.deletedAt ? message.deletedAt.toISOString() : null,
           readAt: message.readAt ? message.readAt.toISOString() : null,
         },
         ConditionExpression: 'attribute_not_exists(conversationId) AND attribute_not_exists(messageId)',
@@ -279,6 +283,55 @@ export class MessageRepository {
         ConditionExpression: 'attribute_exists(conversationId) AND attribute_exists(messageId)',
       })
     ).catch(() => undefined);
+  }
+
+  async getMessage(conversationId: ConversationId, messageId: string): Promise<Message | null> {
+    const result = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLES.MESSAGES,
+        Key: { conversationId, messageId },
+      })
+    );
+
+    if (!result.Item) {
+      return null;
+    }
+
+    return toMessage(result.Item);
+  }
+
+  async updateMessageContent(conversationId: ConversationId, messageId: string, content: string): Promise<void> {
+    const nowIso = new Date().toISOString();
+    await ddbDocClient.send(
+      new UpdateCommand({
+        TableName: TABLES.MESSAGES,
+        Key: { conversationId, messageId },
+        UpdateExpression: 'SET content = :content, updatedAt = :updatedAt, editedAt = :editedAt',
+        ExpressionAttributeValues: {
+          ':content': content,
+          ':updatedAt': nowIso,
+          ':editedAt': nowIso,
+        },
+        ConditionExpression: 'attribute_exists(conversationId) AND attribute_exists(messageId)',
+      })
+    );
+  }
+
+  async softDeleteMessage(conversationId: ConversationId, messageId: string): Promise<void> {
+    const nowIso = new Date().toISOString();
+    await ddbDocClient.send(
+      new UpdateCommand({
+        TableName: TABLES.MESSAGES,
+        Key: { conversationId, messageId },
+        UpdateExpression: 'SET content = :content, updatedAt = :updatedAt, deletedAt = :deletedAt',
+        ExpressionAttributeValues: {
+          ':content': '[mensaje eliminado]',
+          ':updatedAt': nowIso,
+          ':deletedAt': nowIso,
+        },
+        ConditionExpression: 'attribute_exists(conversationId) AND attribute_exists(messageId)',
+      })
+    );
   }
 }
 

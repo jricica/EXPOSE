@@ -61,6 +61,33 @@ const Feed = () => {
     void loadPosts(undefined, true);
   }, []);
 
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
+    const sseUrl = apiBase.startsWith('http')
+      ? `${apiBase}/posts/events`
+      : `${window.location.origin}${apiBase}/posts/events`;
+
+    const es = new EventSource(sseUrl);
+
+    es.addEventListener('new_post', (event) => {
+      try {
+        const data = JSON.parse(event.data) as { userId: number };
+        if (data.userId !== user?.id) {
+          setHasNewPosts(true);
+        }
+      } catch {
+        // ignorar eventos malformados
+      }
+    });
+
+    return () => es.close();
+  }, [user?.id]);
+
+  const handleRefreshFeed = () => {
+    setHasNewPosts(false);
+    void loadPosts(undefined, true);
+  };
+
   const filteredPosts = useMemo(() => {
     if (!showOnlyMine || !user) return posts;
     return posts.filter((post) => post.userId === user.id);
@@ -315,6 +342,14 @@ const Feed = () => {
           </div>
         </form>
 
+        {hasNewPosts ? (
+          <button className="feed-new-posts-banner" onClick={handleRefreshFeed}>
+            Hay nuevos posts — clic para actualizar
+          </button>
+        ) : null}
+
+        {error ? <p className="feed-error">{error}</p> : null}
+        {loading ? <p className="feed-empty">Cargando publicaciones...</p> : null}
         {error && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
@@ -381,6 +416,18 @@ const Feed = () => {
                     </div>
                   </div>
 
+        {filteredPosts.map((post) => (
+          <article key={post.id} className="feed-card">
+            <div className="feed-author">
+              <strong>{post.author?.displayName || post.author?.username || `Usuario #${post.userId}`}</strong>
+              <span>@{post.author?.username || `user${post.userId}`}</span>
+            </div>
+            <p className="feed-content">{post.content}</p>
+            <div className="feed-meta">
+              <span>{post.likes || 0} likes</span>
+              <span>{post.commentCount || 0} comentarios</span>
+              <span>{new Date(post.createdAt).toLocaleString()}</span>
+            </div>
                   <div className="card-body">
                     <p>{post.content}</p>
                     {post.media_url && (

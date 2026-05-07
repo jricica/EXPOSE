@@ -42,6 +42,8 @@ export type PostComment = {
   userId: number;
   content: string;
   createdAt: string;
+  moderationStatus?: 'active' | 'hidden';
+  reportsCount?: number;
 };
 
 export type PostCommentsResponse = {

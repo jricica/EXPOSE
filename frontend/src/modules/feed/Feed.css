@@ -363,6 +363,23 @@
   margin: 0;
 }
 
+.feed-author {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.55rem;
+}
+
+.feed-author strong {
+  font-size: 0.92rem;
+}
+
+.feed-author span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.feed-meta {
 .post-media {
   margin-top: 0.9rem;
   width: 100%;
@@ -493,6 +510,28 @@
   padding: 0.5rem 0.75rem;
 }
 
+.feed-new-posts-banner {
+  width: 100%;
+  padding: 0.65rem;
+  border: 1px solid #2f6ba7;
+  border-radius: 10px;
+  background: linear-gradient(130deg, #112240, #1a3a5c);
+  color: #7ec8f7;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.feed-error {
+  margin: 0;
+  color: #ff7f7f;
 .btn-load-more {
   margin: 2rem auto;
   background: rgba(255, 255, 255, 0.03);
