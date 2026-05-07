@@ -1,6 +1,6 @@
 # .github/workflows/deploy.yml
-# IMPORTANTE: 
-# pendiente de configurar el deploy a AWS, por ahora solo se ejecuta el build para verificar que no haya errores en el proceso de construcción del proyecto.
+# Ejecuta build y migraciones en cada push a main.
+# El deploy real a ECS debe completarse cuando los módulos Terraform estén listos.
 name: Deploy
 
 on:
@@ -18,8 +18,11 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -28,8 +31,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
 
-      - name: Deploy (placeholder)
-        run: echo "Deploy your service here"
-
       - name: Run DB migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate deploy
+
+      # TODO: reemplazar con deploy real a ECS cuando los módulos Terraform estén listos
+      # - name: Deploy to ECS
+      #   run: |
+      #     aws ecs update-service --cluster expose-cluster --service expose-backend --force-new-deployment
