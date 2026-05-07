@@ -19,6 +19,7 @@ const Feed = () => {
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [submittingCommentFor, setSubmittingCommentFor] = useState<number | null>(null);
+  const [hasNewPosts, setHasNewPosts] = useState(false);
 
   const loadPosts = async (cursor?: FeedCursor, initial = false) => {
     try {
@@ -54,6 +55,33 @@ const Feed = () => {
   useEffect(() => {
     void loadPosts(undefined, true);
   }, []);
+
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
+    const sseUrl = apiBase.startsWith('http')
+      ? `${apiBase}/posts/events`
+      : `${window.location.origin}${apiBase}/posts/events`;
+
+    const es = new EventSource(sseUrl);
+
+    es.addEventListener('new_post', (event) => {
+      try {
+        const data = JSON.parse(event.data) as { userId: number };
+        if (data.userId !== user?.id) {
+          setHasNewPosts(true);
+        }
+      } catch {
+        // ignorar eventos malformados
+      }
+    });
+
+    return () => es.close();
+  }, [user?.id]);
+
+  const handleRefreshFeed = () => {
+    setHasNewPosts(false);
+    void loadPosts(undefined, true);
+  };
 
   const filteredPosts = useMemo(() => {
     if (!showOnlyMine || !user) return posts;
@@ -144,6 +172,12 @@ const Feed = () => {
             </button>
           </div>
         </form>
+
+        {hasNewPosts ? (
+          <button className="feed-new-posts-banner" onClick={handleRefreshFeed}>
+            Hay nuevos posts — clic para actualizar
+          </button>
+        ) : null}
 
         {error ? <p className="feed-error">{error}</p> : null}
         {loading ? <p className="feed-empty">Cargando publicaciones...</p> : null}

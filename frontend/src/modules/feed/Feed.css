@@ -136,6 +136,25 @@
   justify-self: center;
 }
 
+.feed-new-posts-banner {
+  width: 100%;
+  padding: 0.65rem;
+  border: 1px solid #2f6ba7;
+  border-radius: 10px;
+  background: linear-gradient(130deg, #112240, #1a3a5c);
+  color: #7ec8f7;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .feed-error {
   margin: 0;
   color: #ff7f7f;
