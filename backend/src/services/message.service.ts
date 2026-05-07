@@ -9,7 +9,7 @@ import {
 } from '../models/message.model';
 import { UserId } from '../models/user.model';
 import { messageRepository, MessageRepository } from '../repositories/message.repository';
-import { areMutualFollowers } from '../repositories/follow.repository';
+import { relationshipRepository } from '../repositories/relationship.repository';
 
 const buildConversationId = (a: UserId, b: UserId): ConversationId => {
   const [first, second] = [a, b].sort((x, y) => x - y);
@@ -28,8 +28,11 @@ export class MessageService {
       throw new Error('No se puede crear conversación directa con el mismo usuario');
     }
 
-    const mutualFollowers = await areMutualFollowers(userA, userB);
-    if (!mutualFollowers) {
+    const [aFollowsB, bFollowsA] = await Promise.all([
+      relationshipRepository.isFollowing(userA, userB),
+      relationshipRepository.isFollowing(userB, userA),
+    ]);
+    if (!aFollowsB || !bFollowsA) {
       throw new Error('Solo puedes iniciar mensajes directos con usuarios que también te siguen');
     }
 
@@ -97,6 +100,9 @@ export class MessageService {
     }
 
     const receiverId = conversation.participantIds.find((id) => id !== senderId);
+    if (receiverId === undefined) {
+      throw new Error('No se encontró destinatario en la conversación');
+    }
     const message: Message = {
       conversationId,
       messageId: `${Date.now()}#${randomUUID()}`,
