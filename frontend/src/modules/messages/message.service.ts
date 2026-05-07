@@ -73,4 +73,16 @@ export const messageService = {
   async followUser(userId: number): Promise<void> {
     await post(`/relationships/users/${userId}/follow`);
   },
+
+  async unfollowUser(userId: number): Promise<void> {
+    await del(`/relationships/users/${userId}/follow`);
+  },
+
+  async listFollowers(userId: number): Promise<PublicUser[]> {
+    return get<PublicUser[]>(`/relationships/users/${userId}/followers`);
+  },
+
+  async listFollowing(userId: number): Promise<PublicUser[]> {
+    return get<PublicUser[]>(`/relationships/users/${userId}/following`);
+  },
 };
