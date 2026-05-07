@@ -67,11 +67,19 @@ export class GracefulShutdown {
 
       logger.info('Server closed, no longer accepting connections');
 
-      // Give existing connections time to finish
-      setTimeout(() => {
+      const flushTimeoutMs = Math.min(5000, Math.max(1000, Math.floor(this.timeout / 6)));
+
+      // CloudWatch logs are written by the logger transports; no explicit flush hook is available here.
+      const flushPromise = Promise.resolve();
+
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(resolve, flushTimeoutMs);
+      });
+
+      Promise.race([flushPromise, timeoutPromise]).finally(() => {
         logger.info('Graceful shutdown completed, exiting...');
         process.exit(exitCode);
-      }, this.timeout);
+      });
     });
 
     // Force exit after timeout
