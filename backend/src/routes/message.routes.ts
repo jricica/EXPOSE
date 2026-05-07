@@ -13,6 +13,7 @@ import { validateConversationOwnership } from '../middlewares/validateConversati
 
 const router = Router();
 
+router.post('/conversations', authMiddleware, createDirectConversation);
 router.post('/conversations/direct', authMiddleware, createDirectConversation);
 router.get('/conversations', authMiddleware, listConversations);
 router.get('/conversations/:conversationId/messages', authMiddleware, validateConversationOwnership, listConversationMessages);
