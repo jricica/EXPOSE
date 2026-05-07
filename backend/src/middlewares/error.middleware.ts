@@ -1,18 +1,39 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
+import { logger } from '../config/logger';
 
 export default function errorHandler(
   err: any,
-  _req: Request,
-  _res: Response,
+  req: Request,
+  res: Response,
   _next: NextFunction
 ) {
-  const message = err instanceof Error ? err.message : "Unexpected error";
+  const message = err instanceof Error ? err.message : 'Unexpected error';
   const status =
     err?.statusCode ??
     err?.status ??
-    (message === "Invalid credentials" ? 401 : 500);
+    (message === 'Invalid credentials' ? 401 : 500);
 
-  _res.status(status).json({
+
+  if (status >= 500) {
+    logger.error('Unhandled server error', {
+      message,
+      stack: err?.stack,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: status,
+      ip: req.ip,
+    });
+  } else {
+    logger.warn('Client error', {
+      message,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: status,
+      ip: req.ip,
+    });
+  }
+
+  res.status(status).json({
     success: false,
     message,
     data: null,
