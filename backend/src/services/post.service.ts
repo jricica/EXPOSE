@@ -240,7 +240,7 @@ export class PostService {
 
     logger.info('Adding comment', { postId, userId, isSensitive });
     const comment = await this.repository.addComment(postId, userId, sanitizedContent, isSensitive);
-    logger.info('Comment added', { postId, commentId: comment.id, userId });
+
     return comment;
   }
 
