@@ -1,4 +1,4 @@
-import { flushCloudWatchNow, logger } from '../config/logger';
+import { logger } from '../config/logger';
 
 interface GracefulShutdownOptions {
   timeout?: number;
@@ -69,9 +69,8 @@ export class GracefulShutdown {
 
       const flushTimeoutMs = Math.min(5000, Math.max(1000, Math.floor(this.timeout / 6)));
 
-      const flushPromise = flushCloudWatchNow().catch((e) => {
-        logger.warn('CloudWatch flush failed during shutdown', { error: e?.message || e });
-      });
+      // CloudWatch logs are written by the logger transports; no explicit flush hook is available here.
+      const flushPromise = Promise.resolve();
 
       const timeoutPromise = new Promise<void>((resolve) => {
         setTimeout(resolve, flushTimeoutMs);
