@@ -61,7 +61,7 @@ export class AuthService {
     return this.buildResponse(publicUser);
   }
 
-  async updateProfile(userId: number, data: { display_name?: string, bio?: string, avatar_url?: string }): Promise<void> {
+  async updateProfile(userId: number, data: { display_name?: string, bio?: string, avatar_url?: string | null }): Promise<void> {
     await userRepository.update(userId, data);
   }
 

@@ -3,7 +3,7 @@ import { patch, get, postForm } from "../../../services/api";
 export interface ProfileUpdateInput {
     display_name?: string;
     bio?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
 }
 
 export const profileService = {

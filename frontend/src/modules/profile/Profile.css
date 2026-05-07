@@ -429,6 +429,17 @@
   color: #050505;
 }
 
+.upload-btn.remove-btn {
+  border-color: rgba(220, 80, 80, 0.35);
+  color: #dc5050;
+  padding: 0 0.75rem;
+}
+
+.upload-btn.remove-btn:hover {
+  background: #dc5050;
+  color: #fff;
+}
+
 .char-count {
   font-size: 0.7rem;
   color: #666;

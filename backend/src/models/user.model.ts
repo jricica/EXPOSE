@@ -15,7 +15,7 @@ export interface User {
     passwordHash: string;
     bio?: string;
     display_name?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
     role: number;
     friends: UserId[];
     createdAt: Date;

@@ -74,6 +74,8 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    e.target.value = "";
+
     setUploading(true);
     try {
       const { url } = await profileService.uploadAvatar(file);
@@ -89,6 +91,20 @@ const Profile = () => {
       setSaveStatus("error");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      const updatedUser = await profileService.updateProfile({ avatar_url: null });
+      setUser(updatedUser);
+      setAvatarPreview("");
+      setFormData((f) => ({ ...f, avatar_url: "" }));
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus("error");
     }
   };
 
@@ -111,9 +127,9 @@ const Profile = () => {
         <div className="profile-card">
           <div className="profile-avatar-wrap">
             <div className="profile-avatar-ring">
-              {(avatarPreview || user?.avatar_url) ? (
+              {avatarPreview ? (
                 <img
-                  src={avatarPreview || user?.avatar_url}
+                  src={avatarPreview}
                   alt={user?.display_name || user?.username}
                   className="profile-avatar-img"
                   onError={() => setAvatarPreview("")}
@@ -243,6 +259,17 @@ const Profile = () => {
                       >
                         {uploading ? "..." : "Subir"}
                       </button>
+                      {avatarPreview && (
+                        <button
+                          type="button"
+                          className="upload-btn remove-btn"
+                          onClick={handleRemoveAvatar}
+                          disabled={uploading}
+                          title="Eliminar imagen"
+                        >
+                          ✕
+                        </button>
+                      )}
                       <input 
                         type="file" 
                         ref={fileInputRef} 
