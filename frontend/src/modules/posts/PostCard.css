@@ -85,3 +85,25 @@
   font-size: 13px;
   text-decoration: underline;
 }
+
+.post-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.follow-btn {
+  background: transparent;
+  border: 1px solid #ffffff33;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.follow-btn:hover {
+  background: white;
+  color: black;
+}
