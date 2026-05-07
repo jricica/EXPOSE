@@ -50,3 +50,6 @@ jobs:
             sudo systemctl restart social-media-api
             
             echo "🚀 Deployment exitoso!"
+
+    env:
+      NODE_ENV: production
