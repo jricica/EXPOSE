@@ -62,6 +62,7 @@ if (useCloudWatch) {
 let cwSequenceToken: string | undefined;
 const cwQueue: Array<{ message: string; timestamp: number }> = [];
 let cwInited = false;
+let cwIntervalId: NodeJS.Timeout | undefined;
 
 async function initCloudWatch() {
   if (!useCloudWatch || !cwClient) return;
@@ -119,9 +120,14 @@ async function flushCloudWatch() {
   }
 }
 
+export async function flushCloudWatchNow(): Promise<void> {
+  if (!useCloudWatch) return;
+  await flushCloudWatch();
+}
+
 if (useCloudWatch) {
   initCloudWatch().catch(() => {});
-  setInterval(() => flushCloudWatch().catch(() => {}), 2000);
+  cwIntervalId = setInterval(() => flushCloudWatch().catch(() => {}), 2000);
 }
 
 const cloudWatchTransport: any = {

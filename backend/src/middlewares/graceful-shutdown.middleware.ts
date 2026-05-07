@@ -1,4 +1,4 @@
-import { logger } from '../config/logger';
+import { flushCloudWatchNow, logger } from '../config/logger';
 
 interface GracefulShutdownOptions {
   timeout?: number;
@@ -67,11 +67,20 @@ export class GracefulShutdown {
 
       logger.info('Server closed, no longer accepting connections');
 
-      // Give existing connections time to finish
-      setTimeout(() => {
+      const flushTimeoutMs = Math.min(5000, Math.max(1000, Math.floor(this.timeout / 6)));
+
+      const flushPromise = flushCloudWatchNow().catch((e) => {
+        logger.warn('CloudWatch flush failed during shutdown', { error: e?.message || e });
+      });
+
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(resolve, flushTimeoutMs);
+      });
+
+      Promise.race([flushPromise, timeoutPromise]).finally(() => {
         logger.info('Graceful shutdown completed, exiting...');
         process.exit(exitCode);
-      }, this.timeout);
+      });
     });
 
     // Force exit after timeout
