@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HttpError } from '../../../services/api';
 import Layout from '../../components/Layout';
 import { useAuth } from '../auth/AuthContext';
 import { postService, type FeedCursor } from '../posts/post.service';
-import type { PostItem } from '../posts/post.types';
+import type { PostComment, PostItem } from '../posts/post.types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCcw, Send, MessageSquare, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { RefreshCcw, Send, MessageSquare, Heart, MessageCircle, MoreHorizontal, Trash2, ImagePlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { messageService } from '../messages/message.service';
 import './Feed.css';
@@ -21,6 +21,20 @@ const Feed = () => {
   const [nextCursor, setNextCursor] = useState<FeedCursor | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showOnlyMine, setShowOnlyMine] = useState(false);
+  const [ttlMinutes, setTtlMinutes] = useState(24 * 60);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [openCommentsByPost, setOpenCommentsByPost] = useState<Record<number, boolean>>({});
+  const [commentsByPost, setCommentsByPost] = useState<Record<number, PostComment[]>>({});
+  const [loadingCommentsByPost, setLoadingCommentsByPost] = useState<Record<number, boolean>>({});
+  const [commentDraftByPost, setCommentDraftByPost] = useState<Record<number, string>>({});
+  const [brokenAvatarByPost, setBrokenAvatarByPost] = useState<Record<number, boolean>>({});
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const loadPosts = async (cursor?: FeedCursor, initial = false) => {
     try {
@@ -69,8 +83,16 @@ const Feed = () => {
 
     try {
       setPublishing(true);
-      const created = await postService.createPost(draft.trim());
+      let mediaUrl: string | undefined;
+
+      if (selectedImage) {
+        const uploaded = await postService.uploadPostImage(selectedImage);
+        mediaUrl = uploaded.url;
+      }
+
+      const created = await postService.createPost(draft.trim(), { ttlMinutes, mediaUrl });
       setDraft('');
+      setSelectedImage(null);
       setPosts((prev) => [created, ...prev]);
     } catch {
       setError('No se pudo transmitir el rastro.');
@@ -79,15 +101,141 @@ const Feed = () => {
     }
   };
 
-  const handleStartMessage = async (userId: number) => {
-    if (userId === user?.id) return;
+  const handleStartMessage = async (post: PostItem) => {
+    if (post.userId === user?.id) return;
     try {
-      const convo = await messageService.createDirectConversation(userId);
-      navigate('/messages', { state: { conversationId: convo.conversationId } });
+      const convo = await messageService.createDirectConversation(post.userId);
+      const contentSnippet = post.content.length > 80 ? `${post.content.slice(0, 80)}...` : post.content;
+      navigate('/messages', {
+        state: {
+          conversationId: convo.conversationId,
+          prefill: `Sobre tu post #${post.id}: "${contentSnippet}"`,
+          postReference: {
+            postId: post.id,
+            preview: contentSnippet,
+          },
+        },
+      });
     } catch (err) {
       setError('No se pudo iniciar la conversación privada.');
     }
   };
+
+  const handleDeletePost = async (postId: number) => {
+    try {
+      await postService.deletePost(postId);
+      setPosts((prev) => prev.filter((post) => post.id !== postId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el post.');
+    }
+  };
+
+  const handleToggleComments = async (postId: number) => {
+    const willOpen = !openCommentsByPost[postId];
+    setOpenCommentsByPost((prev) => ({ ...prev, [postId]: willOpen }));
+
+    if (!willOpen || commentsByPost[postId]) {
+      return;
+    }
+
+    try {
+      setLoadingCommentsByPost((prev) => ({ ...prev, [postId]: true }));
+      const response = await postService.listComments(postId);
+      setCommentsByPost((prev) => ({ ...prev, [postId]: response.comments }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar comentarios.');
+    } finally {
+      setLoadingCommentsByPost((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const handleAddComment = async (postId: number) => {
+    const content = (commentDraftByPost[postId] || '').trim();
+    if (!content) {
+      return;
+    }
+
+    try {
+      const created = await postService.addComment(postId, content);
+      setCommentsByPost((prev) => ({ ...prev, [postId]: [...(prev[postId] || []), created] }));
+      setCommentDraftByPost((prev) => ({ ...prev, [postId]: '' }));
+      setPosts((prev) => prev.map((post) =>
+        post.id === postId ? { ...post, commentCount: (post.commentCount || 0) + 1 } : post,
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo comentar.');
+    }
+  };
+
+  const getGeneratedAlias = (userId: number): string => {
+    const adjectives = [
+      'Neon',
+      'Silver',
+      'Velvet',
+      'Amber',
+      'Nova',
+      'Midnight',
+      'Aether',
+      'Solar',
+      'Echo',
+      'Crimson',
+    ];
+    const nouns = [
+      'Comet',
+      'Cipher',
+      'Orbit',
+      'Ghost',
+      'Voyager',
+      'Mirage',
+      'Pulse',
+      'Sparrow',
+      'Drift',
+      'Halo',
+    ];
+
+    const adjective = adjectives[Math.abs(userId) % adjectives.length];
+    const noun = nouns[Math.floor(Math.abs(userId) / adjectives.length) % nouns.length];
+    return `${adjective} ${noun}`;
+  };
+
+  const getStableAlias = (post: PostItem): string => {
+    if (post.author?.displayName?.trim()) return post.author.displayName.trim();
+    return getGeneratedAlias(post.userId);
+  };
+
+  const getInitials = (label: string) =>
+    label
+      .replace('@', '')
+      .split(' ')
+      .map((chunk) => chunk[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U';
+
+  const formatDuration = (totalSeconds: number): string => {
+    const seconds = Math.max(0, totalSeconds);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+    }
+
+    return `${minutes}m ${String(secs).padStart(2, '0')}s`;
+  };
+
+  const getRemainingLabel = (post: PostItem): string => {
+    const remainingSeconds = Math.floor((new Date(post.expiresAt).getTime() - nowMs) / 1000);
+    if (remainingSeconds <= 0) {
+      return 'Expirado';
+    }
+
+    return formatDuration(remainingSeconds);
+  };
+
+  const wheelProgress = ttlMinutes / (24 * 60);
 
   return (
     <Layout>
@@ -121,6 +269,45 @@ const Feed = () => {
           />
           <div className="transmit-footer">
             <span className="char-count">{280 - draft.length}</span>
+            <div className="transmit-options">
+              <div className="ttl-wheel-wrap">
+                <div
+                  className="ttl-wheel"
+                  style={{
+                    background: `conic-gradient(#eeeeee ${wheelProgress * 360}deg, rgba(255,255,255,0.15) ${wheelProgress * 360}deg)`,
+                  }}
+                >
+                  <div className="ttl-wheel-inner">
+                    <span className="ttl-wheel-title">Duración</span>
+                    <span className="ttl-wheel-value">{formatDuration(ttlMinutes * 60)}</span>
+                  </div>
+                </div>
+                <input
+                  className="ttl-range"
+                  type="range"
+                  min={1}
+                  max={24 * 60}
+                  step={1}
+                  value={ttlMinutes}
+                  onChange={(e) => setTtlMinutes(Number(e.target.value))}
+                  aria-label="Duración del post en minutos"
+                />
+                <span className="ttl-range-hint">1 min - 24 horas</span>
+              </div>
+
+              <button type="button" className="btn-attach" onClick={() => fileInputRef.current?.click()}>
+                <ImagePlus size={14} />
+                Imagen
+              </button>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                ref={fileInputRef}
+                onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+              />
+              {selectedImage && <span className="selected-image-name">{selectedImage.name}</span>}
+            </div>
             <button type="submit" disabled={publishing || !draft.trim()}>
               {publishing ? 'Transmitiendo...' : 'Transmitir'}
               <Send size={14} />
@@ -161,17 +348,44 @@ const Feed = () => {
                 >
                   <div className="card-header">
                     <div className="sender-info">
-                      <div className="sender-avatar">∅</div>
+                      <div className="sender-avatar">
+                        {post.author?.avatarUrl && !brokenAvatarByPost[post.id] ? (
+                          <img
+                            src={post.author.avatarUrl}
+                            alt={getStableAlias(post)}
+                            className="sender-avatar-img"
+                            onError={() => setBrokenAvatarByPost((prev) => ({ ...prev, [post.id]: true }))}
+                          />
+                        ) : (
+                          <span>{getInitials(getStableAlias(post))}</span>
+                        )}
+                      </div>
                       <div>
-                        <span className="sender-name">Origen #{String(post.id).slice(-4)}</span>
-                        <span className="transmission-time">{new Date(post.createdAt).toLocaleTimeString()}</span>
+                        <span className="sender-name">{getStableAlias(post)}</span>
+                        <span className="transmission-time">
+                          {new Date(post.createdAt).toLocaleTimeString()} · {getRemainingLabel(post)}
+                        </span>
                       </div>
                     </div>
-                    <button className="card-opt"><MoreHorizontal size={18} /></button>
+                    <div className="card-opt-group">
+                      {post.userId === user?.id && (
+                        <button
+                          className="card-opt delete"
+                          onClick={() => handleDeletePost(post.id)}
+                          title="Eliminar post"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <button className="card-opt" title="Más opciones"><MoreHorizontal size={18} /></button>
+                    </div>
                   </div>
 
                   <div className="card-body">
                     <p>{post.content}</p>
+                    {post.media_url && (
+                      <img className="post-media" src={post.media_url} alt="Imagen del post" />
+                    )}
                   </div>
 
                   <div className="card-footer">
@@ -186,7 +400,7 @@ const Feed = () => {
                       
                       <button 
                         className="action-btn"
-                        onClick={() => {}}
+                        onClick={() => handleToggleComments(post.id)}
                       >
                         <MessageCircle size={18} />
                         <span>{post.commentCount || 0}</span>
@@ -195,13 +409,42 @@ const Feed = () => {
 
                     <button 
                       className="btn-message-sender"
-                      onClick={() => handleStartMessage(post.userId)}
+                      onClick={() => handleStartMessage(post)}
                       disabled={post.userId === user?.id}
-                      title="Mensaje privado"
+                      title="Mensaje privado sobre este post"
                     >
                       <MessageSquare size={18} />
                     </button>
                   </div>
+
+                  {openCommentsByPost[post.id] && (
+                    <div className="comments-panel">
+                      {loadingCommentsByPost[post.id] ? (
+                        <p className="comments-loading">Cargando comentarios...</p>
+                      ) : (
+                        <>
+                          <div className="comments-list">
+                            {(commentsByPost[post.id] || []).map((comment) => (
+                              <div key={comment.commentId} className="comment-item">
+                                <span className="comment-alias">{getGeneratedAlias(comment.userId)}</span>
+                                <p>{comment.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="comment-compose">
+                            <input
+                              type="text"
+                              placeholder="Escribe un comentario"
+                              value={commentDraftByPost[post.id] || ''}
+                              onChange={(e) => setCommentDraftByPost((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                              maxLength={500}
+                            />
+                            <button type="button" onClick={() => handleAddComment(post.id)}>Enviar</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </motion.article>
               ))}
             </div>

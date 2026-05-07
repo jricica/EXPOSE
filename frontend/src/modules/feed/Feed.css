@@ -116,6 +116,111 @@
   align-items: center;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 1rem;
+}
+
+.transmit-options {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ttl-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #888;
+  font-size: 0.75rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ttl-wheel-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 180px;
+}
+
+.ttl-wheel {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.ttl-wheel-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #0b0b0b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.25rem;
+}
+
+.ttl-wheel-title {
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #787878;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ttl-wheel-value {
+  font-size: 0.66rem;
+  color: #f0f0f0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+}
+
+.ttl-range {
+  width: 160px;
+  accent-color: #eeeeee;
+}
+
+.ttl-range-hint {
+  font-size: 0.65rem;
+  color: #747474;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ttl-control select {
+  background: rgba(255, 255, 255, 0.04);
+  color: #eee;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 0.25rem 0.35rem;
+}
+
+.btn-attach {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #ddd;
+  padding: 0.35rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+}
+
+.selected-image-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #777;
+  font-size: 0.75rem;
 }
 
 .char-count {
@@ -208,6 +313,13 @@
   place-items: center;
   font-family: 'IBM Plex Mono', monospace;
   color: #888;
+  overflow: hidden;
+}
+
+.sender-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .sender-name {
@@ -230,11 +342,34 @@
   cursor: pointer;
 }
 
+.card-opt-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.card-opt.delete {
+  color: #a85555;
+}
+
+.card-opt.delete:hover {
+  color: #ff6a6a;
+}
+
 .card-body p {
   font-size: 1.1rem;
   line-height: 1.7;
   color: #ddd;
   margin: 0;
+}
+
+.post-media {
+  margin-top: 0.9rem;
+  width: 100%;
+  max-height: 440px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .card-footer {
@@ -290,6 +425,72 @@
 .btn-message-sender:disabled {
   opacity: 0.1;
   cursor: not-allowed;
+}
+
+.comments-panel {
+  margin-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.8rem;
+}
+
+.comments-loading {
+  color: #777;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 0.65rem;
+}
+
+.comment-item {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.comment-item p {
+  margin: 0.2rem 0 0;
+  color: #ddd;
+  font-size: 0.9rem;
+}
+
+.comment-alias {
+  color: #999;
+  font-size: 0.7rem;
+  font-family: 'IBM Plex Mono', monospace;
+  text-transform: uppercase;
+}
+
+.comment-compose {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.comment-compose input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #eee;
+  padding: 0.5rem 0.7rem;
+}
+
+.comment-compose button {
+  background: rgba(255, 255, 255, 0.92);
+  border: 0;
+  color: #070707;
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
 }
 
 .btn-load-more {

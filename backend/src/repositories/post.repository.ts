@@ -563,7 +563,7 @@ export class PostRepository {
             {
               Update: {
                 TableName: TABLES.FEED,
-                Key: { postId },
+                Key: { postId: String(postId) },
                 UpdateExpression: 'SET #likes = if_not_exists(#likes, :zero) + :one',
                 ConditionExpression: 'attribute_exists(postId) AND (is_deleted <> :true OR attribute_not_exists(is_deleted))',
                 ExpressionAttributeNames: { '#likes': 'likes' },

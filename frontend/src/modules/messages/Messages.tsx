@@ -5,10 +5,22 @@ import { messageService, type Conversation, type Message } from './message.servi
 import { profileService } from '../profile/profile.service';
 import { motion } from 'framer-motion';
 import { Send, Paperclip, Search, MoreVertical, Trash2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import './Messages.css';
+
+type MessageNavigationState = {
+  conversationId?: string;
+  prefill?: string;
+  postReference?: {
+    postId: number;
+    preview?: string;
+  };
+};
 
 const Messages = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const routeState = (location.state || {}) as MessageNavigationState;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,6 +36,16 @@ const Messages = () => {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    if (routeState.conversationId) {
+      setSelectedConvId(routeState.conversationId);
+    }
+
+    if (routeState.prefill) {
+      setNewMessage(routeState.prefill);
+    }
+  }, [routeState.conversationId, routeState.prefill]);
 
   useEffect(() => {
     if (selectedConvId) {
@@ -80,7 +102,7 @@ const Messages = () => {
         mediaUrl = url;
       }
 
-      const msg = await messageService.sendMessage(selectedConvId, newMessage, mediaUrl);
+      const msg = await messageService.sendMessage(selectedConvId, newMessage, mediaUrl, routeState.postReference);
       setMessages((prev) => [...prev, msg]);
       setNewMessage('');
       setSelectedFile(null);

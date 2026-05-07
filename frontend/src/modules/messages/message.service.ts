@@ -10,6 +10,11 @@ export interface Message {
     createdAt: string;
 }
 
+export interface PostReference {
+    postId: number;
+    preview?: string;
+}
+
 export interface Conversation {
     conversationId: string;
     participantIds: number[];
@@ -27,8 +32,8 @@ export const messageService = {
         return await get<{ messages: Message[] }>(`/messages/conversations/${conversationId}/messages`);
     },
 
-    async sendMessage(conversationId: string, content: string, mediaUrl?: string) {
-        return await post<Message>(`/messages/conversations/${conversationId}/messages`, { content, mediaUrl });
+    async sendMessage(conversationId: string, content: string, mediaUrl?: string, postReference?: PostReference) {
+        return await post<Message>(`/messages/conversations/${conversationId}/messages`, { content, mediaUrl, postReference });
     },
 
     async createDirectConversation(participantUserId: number) {
