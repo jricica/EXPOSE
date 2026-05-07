@@ -154,6 +154,10 @@ const Feed = () => {
 
         {filteredPosts.map((post) => (
           <article key={post.id} className="feed-card">
+            <div className="feed-author">
+              <strong>{post.author?.displayName || post.author?.username || `Usuario #${post.userId}`}</strong>
+              <span>@{post.author?.username || `user${post.userId}`}</span>
+            </div>
             <p className="feed-content">{post.content}</p>
             <div className="feed-meta">
               <span>{post.likes || 0} likes</span>

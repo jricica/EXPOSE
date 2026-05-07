@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../modules/auth/AuthContext";
-import { Home, Compass, User as UserIcon, Shield, LogOut } from "lucide-react";
+import { Home, Compass, User as UserIcon, Shield, LogOut, MessageCircle } from "lucide-react";
 import "./Layout.css";
 
 interface LayoutProps {
@@ -35,6 +35,10 @@ const Layout = ({ children }: LayoutProps) => {
           
           <NavLink to="/profile" className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
             <UserIcon size={18} /> <span className="nav-text">Perfil</span>
+          </NavLink>
+
+          <NavLink to="/messages" className={`nav-link ${location.pathname === '/messages' ? 'active' : ''}`}>
+            <MessageCircle size={18} /> <span className="nav-text">Mensajes</span>
           </NavLink>
           
           {isAdmin && (

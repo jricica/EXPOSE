@@ -1,0 +1,132 @@
+.messages-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.messages-header h2 {
+  margin: 0;
+}
+
+.messages-header p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+}
+
+.messages-start-box {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.messages-start-box input,
+.messages-compose input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #25364f;
+  border-radius: 10px;
+  background: #111925;
+  color: #eef5ff;
+  padding: 0.55rem 0.65rem;
+}
+
+.messages-start-box button,
+.messages-user-results button,
+.messages-compose button {
+  border: 1px solid #32587f;
+  border-radius: 10px;
+  background: #16293f;
+  color: #d8e9ff;
+  padding: 0.45rem 0.8rem;
+}
+
+.messages-user-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.messages-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+}
+
+.messages-list,
+.messages-chat {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(150deg, #141922 0%, #0f141c 100%);
+  padding: 0.9rem;
+}
+
+.messages-list {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.messages-list button {
+  text-align: left;
+  border: 1px solid #24374d;
+  border-radius: 10px;
+  background: #111925;
+  color: #e5efff;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.messages-list button.active {
+  border-color: #4a87c2;
+}
+
+.messages-list button span {
+  color: #9cb3ce;
+  font-size: 0.82rem;
+}
+
+.messages-thread {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-bottom: 0.8rem;
+}
+
+.bubble {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  max-width: 70%;
+}
+
+.bubble.mine {
+  justify-self: end;
+  background: #1f456d;
+}
+
+.bubble.theirs {
+  justify-self: start;
+  background: #1b2431;
+}
+
+.bubble small {
+  color: #adc3dc;
+  font-size: 0.72rem;
+}
+
+.messages-compose {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.messages-error {
+  color: #ff7f7f;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .messages-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -74,6 +74,22 @@
   line-height: 1.45;
 }
 
+.feed-author {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.55rem;
+}
+
+.feed-author strong {
+  font-size: 0.92rem;
+}
+
+.feed-author span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .feed-meta {
   display: flex;
   flex-wrap: wrap;
