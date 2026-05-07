@@ -23,7 +23,7 @@ router.patch('/conversations/:conversationId/messages/:messageId', authMiddlewar
 router.delete('/conversations/:conversationId/messages/:messageId', authMiddleware, validateConversationOwnership, deleteConversationMessage);
 router.post('/conversations/:conversationId/read', authMiddleware, validateConversationOwnership, markConversationRead);
 
-router.post('/messages', authMiddleware, sendMessage);
-router.get('/messages', authMiddleware, listMessages);
+router.post('/', authMiddleware, sendMessage);
+router.get('/', authMiddleware, listMessages);
 
 export default router;
