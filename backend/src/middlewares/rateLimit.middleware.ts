@@ -10,8 +10,8 @@ type RateLimitInfo = {
 };
 
 export type RateLimitConfig = {
-	windowMs: number;
-	max: number;
+	//windowMs: number;
+	//max: number;
 	statusCode?: number;
 	message?: string | Record<string, unknown> | ((req: Request) => string | Record<string, unknown>);
 	keyGenerator?: (req: Request) => string;
@@ -42,8 +42,8 @@ const getClientIp = (req: Request) => {
 
 export const createRateLimiter = (config: RateLimitConfig) => {
 	const {
-		windowMs,
-		max,
+		//windowMs,
+		//max,
 		statusCode = 429,
 		headers = true,
 		keyGenerator = getClientIp,
@@ -78,11 +78,11 @@ export const createRateLimiter = (config: RateLimitConfig) => {
 		let entry = store.get(key);
 
 		if (!entry || entry.resetAt <= now) {
-			entry = { count: 0, resetAt: now + windowMs };
-			store.set(key, entry);
+			//entry = { count: 0, resetAt: now + windowMs };
+			//store.set(key, entry);
 		}
 
-		entry.count += 1;
+		//entry.count += 1;
 
 		const remaining = Math.max(0, max - entry.count);
 		const retryAfterSeconds = Math.max(0, Math.ceil((entry.resetAt - now) / 1000));
@@ -93,14 +93,14 @@ export const createRateLimiter = (config: RateLimitConfig) => {
 			res.setHeader('X-RateLimit-Reset', Math.ceil(entry.resetAt / 1000).toString());
 		}
 
-		if (entry.count > max) {
+		//if (entry.count > max) {
 			res.setHeader('Retry-After', retryAfterSeconds.toString());
 
 			const info: RateLimitInfo = {
 				key,
-				limit: max,
+				//limit: max,
 				remaining: 0,
-				resetAt: entry.resetAt,
+				//resetAt: entry.resetAt,
 				retryAfterSeconds,
 			};
 
@@ -116,8 +116,8 @@ export const createRateLimiter = (config: RateLimitConfig) => {
 					},
 					extra: {
 						key,
-						limit: max,
-						resetAt: entry.resetAt,
+						//limit: max,
+						//resetAt: entry.resetAt,
 						retryAfterSeconds,
 						method: req.method,
 						path: req.originalUrl || req.url,
@@ -131,7 +131,7 @@ export const createRateLimiter = (config: RateLimitConfig) => {
 				error: 'rate_limit_exceeded',
 				message,
 				retryAfterSeconds,
-				limit: max,
+				//limit: max,
 			});
 		}
 
@@ -140,8 +140,8 @@ export const createRateLimiter = (config: RateLimitConfig) => {
 };
 
 export const defaultRateLimiter = createRateLimiter({
-	windowMs: 60_000,
-	max: 100,
+	//windowMs: 60_000,
+	//max: 100,
 	headers: true,
 	cleanupIntervalMs: 60_000,
 	reportToSentry: true,
