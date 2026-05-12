@@ -1,7 +1,7 @@
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 
 export async function loadSecrets() {
-  const secret_name = "rds!db-6d43d572-59ab-4b93-8e64-f5b5bef69f46";
+  const secret_name = "RDS";
   
   // Si no hay credenciales, saltará un error al instanciar o enviar.
   // Es importante tener AWS_REGION, AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY en el ambiente local, 
