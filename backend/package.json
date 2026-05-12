@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "prestart": "npm run prisma:migrate:deploy",
+    "prestart": "npm run db:migrate:deploy",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:test": "ts-node src/test-connection.ts",
@@ -37,7 +37,7 @@
     "cls-hooked": "^4.2.2",
     "compression": "^1.7.4",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^7.1.5",
     "jsonwebtoken": "^9.0.3",
